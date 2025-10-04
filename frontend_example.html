@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>合同审阅系统 - 前端示例</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        .section h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .file-upload {
+            border: 2px dashed #3498db;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+        }
+        .file-input {
+            margin: 10px 0;
+        }
+        .btn {
+            background-color: #3498db;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        .btn:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 400px;
+        }
+        .chat-messages {
+            flex: 1;
+            border: 1px solid #ddd;
+            padding: 15px;
+            overflow-y: auto;
+            background-color: #fafafa;
+            margin-bottom: 10px;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .user-message {
+            background-color: #e3f2fd;
+            margin-left: 20px;
+        }
+        .assistant-message {
+            background-color: #f1f8e9;
+            margin-right: 20px;
+        }
+        .chat-input {
+            display: flex;
+            gap: 10px;
+        }
+        .chat-input input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .modifications {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .modification-item {
+            background-color: white;
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #f39c12;
+            border-radius: 3px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 合同审阅系统</h1>
+            <p>智能合同审阅助手 - 前端集成示例</p>
+        </div>
+
+        <!-- 文件上传区域 -->
+        <div class="section">
+            <h3>📄 上传合同文档</h3>
+            <div class="file-upload">
+                <input type="file" id="fileInput" accept=".docx" class="file-input">
+                <br>
+                <button id="uploadBtn" class="btn">上传文档</button>
+                <div id="uploadStatus"></div>
+            </div>
+        </div>
+
+        <!-- 对话区域 -->
+        <div class="section">
+            <h3>💬 与AI助手对话</h3>
+            <div class="chat-container">
+                <div id="chatMessages" class="chat-messages">
+                    <div class="message assistant-message">
+                        <strong>AI助手:</strong> 您好！我是您的专业合同审阅助手。请先上传合同文档，然后我可以帮您审阅。
+                    </div>
+                </div>
+                <div class="chat-input">
+                    <input type="text" id="messageInput" placeholder="输入您的消息..." disabled>
+                    <button id="sendBtn" class="btn" disabled>发送</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 修改建议区域 -->
+        <div id="modificationsSection" class="section" style="display: none;">
+            <h3>📋 修改建议</h3>
+            <div id="modifications"></div>
+        </div>
+
+        <!-- 下载区域 -->
+        <div id="downloadSection" class="section" style="display: none;">
+            <h3>📥 下载文件</h3>
+            <button id="downloadModified" class="btn">下载修改后的文档</button>
+            <button id="downloadReport" class="btn">下载审阅报告</button>
+        </div>
+    </div>
+
+    <script>
+        // API客户端类
+        class ContractReviewAPI {
+            constructor(baseURL = 'http://localhost:8000') {
+                this.baseURL = baseURL;
+                this.sessionId = null;
+            }
+
+            async uploadDocument(file) {
+                if (!file.name.endsWith('.docx')) {
+                    throw new Error('只支持 .docx 格式的文件');
+                }
+
+                const formData = new FormData();
+                formData.append('file', file);
+                if (this.sessionId) {
+                    formData.append('session_id', this.sessionId);
+                }
+
+                const response = await fetch(`${this.baseURL}/api/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`上传失败: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                this.sessionId = result.session_id;
+                return result;
+            }
+
+            async chat(message, action = 'chat') {
+                if (!this.sessionId) {
+                    throw new Error('请先上传文档');
+                }
+
+                const response = await fetch(`${this.baseURL}/api/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message,
+                        session_id: this.sessionId,
+                        action
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`对话失败: ${response.statusText}`);
+                }
+
+                return await response.json();
+            }
+
+            getDownloadURL(fileType) {
+                if (!this.sessionId) {
+                    throw new Error('请先上传文档');
+                }
+                return `${this.baseURL}/api/download/${this.sessionId}/${fileType}`;
+            }
+        }
+
+        // 初始化
+        const api = new ContractReviewAPI();
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const uploadStatus = document.getElementById('uploadStatus');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const chatMessages = document.getElementById('chatMessages');
+        const modificationsSection = document.getElementById('modificationsSection');
+        const modifications = document.getElementById('modifications');
+        const downloadSection = document.getElementById('downloadSection');
+
+        // 显示状态消息
+        function showStatus(element, message, type = 'info') {
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        // 添加聊天消息
+        function addMessage(content, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'assistant-message'}`;
+            messageDiv.innerHTML = `<strong>${isUser ? '您' : 'AI助手'}:</strong> ${content}`;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // 显示修改建议
+        function showModifications(mods) {
+            if (!mods || mods.length === 0) return;
+
+            modifications.innerHTML = '';
+            mods.forEach((mod, index) => {
+                const modDiv = document.createElement('div');
+                modDiv.className = 'modification-item';
+                modDiv.innerHTML = `
+                    <h4>${mod.position}</h4>
+                    <p><strong>原文:</strong> ${mod.original_content}</p>
+                    <p><strong>风险分析:</strong> ${mod.risk_analysis}</p>
+                    <p><strong>建议修改:</strong> ${mod.suggested_content}</p>
+                `;
+                modifications.appendChild(modDiv);
+            });
+            modificationsSection.style.display = 'block';
+        }
+
+        // 上传文档
+        uploadBtn.addEventListener('click', async () => {
+            const file = fileInput.files[0];
+            if (!file) {
+                showStatus(uploadStatus, '请选择文件', 'error');
+                return;
+            }
+
+            try {
+                uploadBtn.disabled = true;
+                showStatus(uploadStatus, '正在上传...', 'info');
+                
+                const result = await api.uploadDocument(file);
+                showStatus(uploadStatus, `上传成功！会话ID: ${result.session_id}`, 'success');
+                
+                // 启用对话功能
+                messageInput.disabled = false;
+                sendBtn.disabled = false;
+                
+                addMessage('文档上传成功！现在可以开始对话了。');
+                
+            } catch (error) {
+                showStatus(uploadStatus, `上传失败: ${error.message}`, 'error');
+            } finally {
+                uploadBtn.disabled = false;
+            }
+        });
+
+        // 发送消息
+        sendBtn.addEventListener('click', async () => {
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            addMessage(message, true);
+            messageInput.value = '';
+
+            try {
+                sendBtn.disabled = true;
+                const response = await api.chat(message);
+                
+                addMessage(response.response);
+                
+                // 显示修改建议
+                if (response.modifications) {
+                    showModifications(response.modifications);
+                }
+                
+                // 显示下载按钮
+                if (response.modified_document_url || response.report_url) {
+                    downloadSection.style.display = 'block';
+                }
+                
+            } catch (error) {
+                addMessage(`错误: ${error.message}`);
+            } finally {
+                sendBtn.disabled = false;
+            }
+        });
+
+        // 回车发送消息
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendBtn.click();
+            }
+        });
+
+        // 下载文件
+        document.getElementById('downloadModified').addEventListener('click', () => {
+            const url = api.getDownloadURL('modified');
+            window.open(url, '_blank');
+        });
+
+        document.getElementById('downloadReport').addEventListener('click', () => {
+            const url = api.getDownloadURL('report');
+            window.open(url, '_blank');
+        });
+    </script>
+</body>
+</html>
