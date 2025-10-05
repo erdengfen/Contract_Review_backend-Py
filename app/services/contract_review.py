@@ -24,6 +24,7 @@ class ContractReviewService:
         """执行合同审阅"""
         try:
             # 提取合同内容
+            # 使用绝对路径提取，避免相对路径导致服务器端找不到文件
             contract_content = await self.mcp_client.extract_document_content(contract_path)
             logger.info(f"✅ 提取完成，文本：{contract_content}\n路径：{contract_path}")
             

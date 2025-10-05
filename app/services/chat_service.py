@@ -85,6 +85,7 @@ class ChatService:
                     # 执行审阅
                     modifications = await self.contract_review_service.review_contract(session["contract_path"])
                     session["modifications"] = modifications
+                    # 优先使用绝对路径提取，避免相对路径导致服务器端找不到文件
                     session["contract_content"] = await self.mcp_client.extract_document_content(session["contract_path"])
                     response_data["modifications"] = modifications
                     response_data["response"] = f"✅ 合同审阅完成！我发现了 {len(modifications)} 个需要关注的修改点。"

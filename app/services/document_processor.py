@@ -22,7 +22,7 @@ class DocumentProcessorService:
         try:
             # 创建修改后的文档
             modified_filename = f"modified_{Path(contract_path).name}"
-            modified_path = Path(output_dir) / modified_filename
+            modified_path = (Path(output_dir) / modified_filename).resolve()
             
             # 复制文档
             await self.mcp_client.call_tool("copy_document", {
@@ -72,7 +72,7 @@ class DocumentProcessorService:
                             logger.warning(f"格式化失败: {fe}")
             
             # 生成报告
-            report_path = self._generate_report(contract_path, str(modified_path), modifications, output_dir)
+            report_path = self._generate_report(contract_path, str(modified_path), modifications, str(Path(output_dir).resolve()))
             
             return {
                 "modified_contract_path": str(modified_path),
