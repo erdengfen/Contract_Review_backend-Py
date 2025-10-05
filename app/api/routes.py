@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse
 from .models import ChatRequest, ChatResponse, UploadResponse
 from ..services.chat_service import ChatService
 from ..utils.mcp_client import MCPClient
+from ..core.config import UPLOAD_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -52,9 +53,9 @@ async def upload_document(
         if not file.filename.endswith('.docx'):
             raise HTTPException(status_code=400, detail="只支持.docx格式的文件")
         
-        # 保存文件
+        # 保存文件（使用绝对路径，确保 MCP 服务器可访问）
         filename = f"{session_id}_{file.filename}"
-        file_path = Path("output/uploads") / filename
+        file_path = (Path(UPLOAD_DIR) / filename).resolve()
         file_path.parent.mkdir(parents=True, exist_ok=True)
         
         with open(file_path, "wb") as buffer:
@@ -111,7 +112,8 @@ async def download_file(session_id: str, file_type: str):
                 filename=f"modified_contract_{session_id}.docx",
                 media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )
-        
+
+
         elif file_type == "report":
             file_path = session.get("report_path")
             if not file_path or not Path(file_path).exists():

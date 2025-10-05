@@ -5,6 +5,7 @@ import logging
 from typing import Any, Dict, List
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from ..core.config import MCP_SERVER_URL
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +37,20 @@ class MCPClient:
     async def call_tool(self, tool_name: str, arguments: dict) -> Any:
         """调用MCP工具"""
         try:
+            # 统一将 filename/source/destination 等路径参数转换为绝对路径
+            normalized_args = {}
+            for k, v in (arguments or {}).items():
+                if isinstance(v, str) and k in {"filename", "source_filename", "destination_filename"}:
+                    try:
+                        normalized_args[k] = str(Path(v).resolve())
+                    except Exception:
+                        normalized_args[k] = v
+                else:
+                    normalized_args[k] = v
+
             tool = next((t for t in self.tools if t.name == tool_name), None)
             if tool:
-                return await tool.ainvoke(arguments)
+                return await tool.ainvoke(normalized_args)
             else:
                 raise Exception(f"找不到工具: {tool_name}")
         except Exception as e:
@@ -48,7 +60,7 @@ class MCPClient:
     async def extract_document_content(self, file_path: str) -> str:
         """提取文档内容"""
         try:
-            result = await self.call_tool("get_document_text", {"filename": file_path})
+            result = await self.call_tool("get_document_text", {"filename": str(Path(file_path).resolve())})
             if result:
                 content = str(result)
                 logger.info(f"✅ 成功提取文档内容，长度: {len(content)} 字符")

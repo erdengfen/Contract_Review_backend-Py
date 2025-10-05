@@ -117,7 +117,7 @@ contract_review/
     └── modified_*.docx
 ```
 
-## ⚙️ 配置说明
+## 配置说明
 
 ### 环境变量
 - `DEEPSEEK_API_KEY`: DeepSeek API密钥
