@@ -24,9 +24,8 @@ class ContractReviewService:
         """执行合同审阅"""
         try:
             # 提取合同内容
-            # 使用绝对路径提取，避免相对路径导致服务器端找不到文件
             contract_content = await self.mcp_client.extract_document_content(contract_path)
-            logger.info(f"✅ 提取完成，文本：{contract_content}\n路径：{contract_path}")
+            # logger.info(f"✅ 提取完成，文本：{contract_content}\n路径：{contract_path}")
             
             # 构建审阅提示词
             prompt_file_path = Path(__file__).parent.parent.parent / "prompts" / "contract_reviewer_prompt_new.txt"
@@ -50,7 +49,9 @@ class ContractReviewService:
 1. 【修改点X】- 修改点编号和标题
 2. 【原文】- 原始条款内容
 3. 【风险分析】- 法律风险分析
-4. 【修改后的内容】- 建议的修改内容
+4. 【风险等级】- （高/中/低；含评分 0–100）
+5. 【修改后的内容】- 建议的修改内容
+6. 【修改理由】- 说明法律条文与商业合理性
 
 请确保分析专业、建议可行、格式规范。
 """
@@ -158,14 +159,14 @@ class ContractReviewService:
                     modified_match = re.search(r'修改[：:]\s*(.*?)(?=\n|$)', content, re.DOTALL)
 
                 # 风险等级
-                level_match = re.search(r'【风险等级】\n(.*?)(?=【修改后的内容】)', content, re.DOTALL)
+                level_match = re.search(r'【风险等级】[：:\s]*([\s\S]*?)(?=【修改后的内容】|【修改理由】|$)', content, re.DOTALL)
                 if not level_match:
-                    level_match = re.search(r'风险等级[：:]\s*(.*?)(?=修改)', content, re.DOTALL)
+                    level_match = re.search(r'风险等级[：:\s]*([\s\S]*?)(?=【修改后的内容】|修改|【修改理由】|$)', content, re.DOTALL)
 
                 # 修改理由
-                reason_match = re.search(r'【修改理由】\n(.*?)(?=\n|$)', content, re.DOTALL)
+                reason_match = re.search(r'【修改理由】[：:\s]*([\s\S]*?)(?=\n*【|$)', content, re.DOTALL)
                 if not reason_match:
-                    reason_match = re.search(r'修改理由[：:]\s*(.*?)(?=\n|$)', content, re.DOTALL)
+                    reason_match = re.search(r'修改理由[：:\s]*([\s\S]*?)(?=\n*【|$)', content, re.DOTALL)
 
                 modification = {
                     "position": f"修改点{point_num}",
@@ -173,9 +174,7 @@ class ContractReviewService:
                     "risk_analysis": risk_match.group(1).strip() if risk_match else "未找到风险分析",
                     "risk_level": level_match.group(1).strip() if level_match else "未知",
                     "suggested_content": modified_match.group(1).strip() if modified_match else "未找到修改建议",
-                    "reason": reason_match.group(1).strip() if reason_match else "未找到修改理由",
-                    "priority": "中",
-                    "action": "建议修改"
+                    "reason": reason_match.group(1).strip() if reason_match else "未找到修改理由"
                 }
 
                 modifications.append(modification)
