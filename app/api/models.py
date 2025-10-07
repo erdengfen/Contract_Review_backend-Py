@@ -5,8 +5,8 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 
 class ChatRequest(BaseModel):
-    message: str
-    session_id: Optional[str] = None
+    message: Optional[str] = "审阅"
+    session_id: str
     action: Optional[str] = "chat"  # chat, review, modify, export
 
 class ChatResponse(BaseModel):
