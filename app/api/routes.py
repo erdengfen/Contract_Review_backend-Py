@@ -6,11 +6,13 @@ import logging
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse
+from starlette.responses import StreamingResponse
 
 from .models import ChatRequest, ChatResponse, UploadResponse
 from ..services.chat_service import ChatService
 from ..utils.mcp_client import MCPClient
 from ..core.config import UPLOAD_DIR
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -85,13 +87,16 @@ async def chat_with_assistant(request: ChatRequest):
         if not request.session_id:
             request.session_id = str(uuid.uuid4())
         
-        result = await chat_service.process_message(
-            request.message, 
-            request.session_id, 
-            request.action
-        )
-        
-        return ChatResponse(**result)
+        async def event_generator():
+            async for chunk in chat_service.process_message(
+                request.message,
+                request.session_id,
+                request.action
+            ):
+                # SSE 格式：data: <JSON字符串>\n\n
+                yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+
+        return StreamingResponse(event_generator(), media_type="text/event-stream")
         
     except Exception as e:
         logger.error(f"聊天处理失败: {e}")

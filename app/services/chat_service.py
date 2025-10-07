@@ -9,6 +9,7 @@ from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from ..core.llm import init_llm
 from .contract_review import ContractReviewService
 from .document_processor import DocumentProcessorService
+from ..utils.content_slicer import split_text_by_length
 
 logger = logging.getLogger(__name__)
 
@@ -78,17 +79,33 @@ class ChatService:
             }
             
             if intent == "review" and action_type == "start_review":
-                # 开始审阅流程
-                if not session.get("contract_path"):
-                    response_data["response"] = "请先上传合同文件，然后我可以帮您审阅。"
-                else:
-                    # 执行审阅
-                    modifications = await self.contract_review_service.review_contract(session["contract_path"])
-                    session["modifications"] = modifications
-                    # 优先使用绝对路径提取，避免相对路径导致服务器端找不到文件
-                    session["contract_content"] = await self.mcp_client.extract_document_content(session["contract_path"])
-                    response_data["modifications"] = modifications
-                    response_data["response"] = f"✅ 合同审阅完成！我发现了 {len(modifications)} 个需要关注的修改点。"
+                    # 开始审阅流程
+                    if not session.get("contract_path"):
+                        response_data["response"] = "请先上传合同文件，然后我可以帮您审阅。"
+                    else:
+                        # 提取合同内容
+                        contract_content = await self.mcp_client.extract_document_content(session["contract_path"])
+                        # 分割文档，分多次进行审阅（大文件一次审阅不完）
+                        chunks = split_text_by_length(contract_content, max_length=4000)
+                        print(f"共分为 {len(chunks)} 段")
+                        for i, c in enumerate(chunks, start=1):
+                            print(f"第{i}段长度：{len(c)} 字符")
+                        #审阅部分
+                        for idx, chunk in enumerate(chunks):
+                            modifications = await self.contract_review_service.review_contract(chunk)
+                            yield {
+                                "response": f"✅ 第 {idx + 1}/{len(chunks)} 段审阅完成，发现 {len(modifications)} 个修改点。",
+                                "session_id": session_id,
+                                "action": "reviewing",
+                                "modifications": modifications,
+                                "modified_document_url": None,
+                                "report_url": None
+                            }
+                        yield {
+                            "response": "全部审阅完成",
+                            "session_id": session_id,
+                            "action": "review_complete"
+                        }
             
             elif intent == "modify" and action_type == "apply_modifications":
                 # 修改合同
@@ -111,11 +128,11 @@ class ChatService:
             # 添加助手响应到对话历史
             session["dialogue_history"].append({"role": "assistant", "content": response_data["response"]})
             
-            return response_data
+            return
             
         except Exception as e:
             logger.error(f"❌ 处理聊天消息失败: {e}")
-            return {
+            yield {
                 "response": f"抱歉，处理您的请求时出现错误：{str(e)}",
                 "session_id": session_id,
                 "action": "error",
@@ -123,6 +140,7 @@ class ChatService:
                 "modified_document_url": None,
                 "report_url": None
             }
+            return
     
     async def _get_llm_response(self, user_input: str, context: Dict[str, Any]) -> str:
         """获取大模型的对话响应"""
