@@ -141,9 +141,6 @@ class ContractReviewService:
             for match in matches:
                 point_num = match[0]
                 content = match[1].strip()
-                print("="*50)
-                print(content)
-                print("="*50)
                 # 提取原文、风险分析、修改后内容
                 original_match = re.search(r'【?\s*原文\s*】?[：:\s]*([\s\S]*?)(?=【?\s*风险分析\s*】?|【?\s*风险等级\s*】?|【?\s*修改后的内容\s*】?|$)', content, re.DOTALL)
                 if not original_match:
