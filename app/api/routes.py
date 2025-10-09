@@ -13,6 +13,7 @@ from ..services.chat_service import ChatService
 from ..utils.mcp_client import MCPClient
 from ..core.config import UPLOAD_DIR
 import json
+from ..utils.contract_parser import extract_parties_with_llm
 
 logger = logging.getLogger(__name__)
 
@@ -63,17 +64,28 @@ async def upload_document(
         with open(file_path, "wb") as buffer:
             content = await file.read()
             buffer.write(content)
+
+        # 分析甲乙方
+        parties = await extract_parties_with_llm(str(file_path), chat_service.llm)
+        party_a = parties["party_a"]
+        party_b = parties["party_b"]
         
         # 更新会话
         session = chat_service.get_or_create_session(session_id)
-        session["contract_path"] = str(file_path)
-        session["document_id"] = filename
-        
+        session.update({
+            "contract_path": str(file_path),
+            "document_id": filename,
+            "party_a": party_a,
+            "party_b": party_b
+        })
+
         return UploadResponse(
             success=True,
             message="文件上传成功",
             session_id=session_id,
-            document_id=filename
+            document_id=filename,
+            party_a=party_a,
+            party_b=party_b
         )
         
     except Exception as e:
@@ -91,7 +103,8 @@ async def chat_with_assistant(request: ChatRequest):
             async for chunk in chat_service.process_message(
                 request.message,
                 request.session_id,
-                request.action
+                request.action,
+                request.role
             ):
                 # SSE 格式：data: <JSON字符串>\n\n
                 yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"

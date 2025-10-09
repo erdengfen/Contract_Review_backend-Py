@@ -21,10 +21,11 @@ class ContractReviewService:
         self.llm = init_llm()
         self.mcp_client = mcp_client
     
-    async def review_contract(self, chunk_text: str) -> List[Dict[str, Any]]:
+    async def review_contract(self, chunk_text: str, user_role: str = "甲方") -> List[Dict[str, Any]]:
         """执行合同审阅"""
         try:
             # 构建审阅提示词
+            print(user_role)
             prompt_file_path = Path(__file__).parent.parent.parent / "prompts" / "contract_reviewer_prompt_new.txt"
             try:
                 with open(prompt_file_path, 'r', encoding='utf-8') as f:
@@ -35,7 +36,7 @@ class ContractReviewService:
             review_prompt = f"""{base_prompt}
 
 ## 任务要求
-请对以下合同进行专业审阅：
+用户是{user_role}，请从{user_role}的角度分析合同风险。对以下合同进行专业审阅：
 
 ## 合同内容
 ```

@@ -8,6 +8,7 @@ class ChatRequest(BaseModel):
     message: Optional[str] = "审阅"
     session_id: str
     action: Optional[str] = "chat"  # chat, review, modify, export
+    role: Optional[str] = None
 
 class ChatResponse(BaseModel):
     response: str
@@ -22,3 +23,5 @@ class UploadResponse(BaseModel):
     message: str
     session_id: str
     document_id: str
+    party_a: Optional[str] = None #甲方名称
+    party_b: Optional[str] = None #乙方名称
