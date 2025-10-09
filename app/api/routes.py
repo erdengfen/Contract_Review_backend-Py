@@ -36,7 +36,6 @@ async def init_services():
     
     contract_review_service = ContractReviewService(mcp_client)
     document_processor_service = DocumentProcessorService(mcp_client)
-    
     chat_service = ChatService(mcp_client, contract_review_service, document_processor_service)
 
 @router.post("/upload", response_model=UploadResponse)
@@ -63,9 +62,9 @@ async def upload_document(
             buffer.write(content)
         
         # 更新会话
-        session = chat_service.get_or_create_session(session_id)
-        session["contract_path"] = str(file_path)
-        session["document_id"] = filename
+        # session = chat_service.get_or_create_session(session_id)
+        # session["contract_path"] = str(file_path)
+        # session["document_id"] = filename
         
         return UploadResponse(
             success=True,

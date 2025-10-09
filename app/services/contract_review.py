@@ -28,7 +28,7 @@ class ContractReviewService:
             contract_content = await self.mcp_client.extract_document_content(contract_path)
             
             # 构建审阅提示词
-            prompt_file_path = Path(__file__).parent.parent.parent / "prompts" / "contract_reviewer_prompt.txt"
+            prompt_file_path = Path(__file__).parent.parent.parent / "prompts" / "contract_reviewer_prompt_new.txt"
             try:
                 with open(prompt_file_path, 'r', encoding='utf-8') as f:
                     base_prompt = f.read()
@@ -121,9 +121,7 @@ class ContractReviewService:
                             "position": f"修改点{match.group(1)}",
                             "original_content": "",
                             "risk_analysis": "",
-                            "suggested_content": "",
-                            "priority": "中",
-                            "action": "建议修改"
+                            "suggested_content": ""
                         }
                     
                     # 提取内容
@@ -137,42 +135,52 @@ class ContractReviewService:
                 
                 if current_mod:
                     modifications.append(current_mod)
-            
+
             # 处理匹配到的修改点
             for match in matches:
                 point_num = match[0]
                 content = match[1].strip()
-                
+
                 # 提取原文、风险分析、修改后内容
-                original_match = re.search(r'【原文】\n(.*?)(?=【风险分析】|【修改后的内容】)', content, re.DOTALL)
+                original_match = re.search(r'【原文】\n(.*?)(?=【风险分析】|【风险等级】|【修改后的内容】)', content, re.DOTALL)
                 if not original_match:
                     original_match = re.search(r'原文[：:]\s*(.*?)(?=风险|修改)', content, re.DOTALL)
-                
-                risk_match = re.search(r'【风险分析】\n(.*?)(?=【修改后的内容】)', content, re.DOTALL)
+
+                risk_match = re.search(r'【风险分析】\n(.*?)(?=【风险等级】|【修改后的内容】)', content, re.DOTALL)
                 if not risk_match:
                     risk_match = re.search(r'风险[：:]\s*(.*?)(?=修改)', content, re.DOTALL)
-                
-                modified_match = re.search(r'【修改后的内容】\n(.*?)(?=\n|$)', content, re.DOTALL)
+
+                modified_match = re.search(r'【修改后的内容】\n(.*?)(?=【修改理由】|$)', content, re.DOTALL)
                 if not modified_match:
                     modified_match = re.search(r'修改[：:]\s*(.*?)(?=\n|$)', content, re.DOTALL)
-                
+
+                # 风险等级
+                level_match = re.search(r'【风险等级】\n(.*?)(?=【修改后的内容】)', content, re.DOTALL)
+                if not level_match:
+                    level_match = re.search(r'风险等级[：:]\s*(.*?)(?=修改)', content, re.DOTALL)
+
+                # 修改理由
+                reason_match = re.search(r'【修改理由】\n(.*?)(?=\n|$)', content, re.DOTALL)
+                if not reason_match:
+                    reason_match = re.search(r'修改理由[：:]\s*(.*?)(?=\n|$)', content, re.DOTALL)
+
                 modification = {
                     "position": f"修改点{point_num}",
                     "original_content": original_match.group(1).strip() if original_match else "未找到原文内容",
                     "risk_analysis": risk_match.group(1).strip() if risk_match else "未找到风险分析",
-                    "suggested_content": f"***{modified_match.group(1).strip()}***" if modified_match else "未找到修改建议",
-                    "priority": "中",
-                    "action": "建议修改"
+                    "risk_level": level_match.group(1).strip() if level_match else "未知",
+                    "suggested_content": modified_match.group(1).strip() if modified_match else "未找到修改建议",
+                    "reason": reason_match.group(1).strip() if reason_match else "未找到修改理由"
                 }
-                
+
                 modifications.append(modification)
-            
+
             # 如果没有匹配到任何修改点，记录日志但不创建默认修改点
             if not modifications:
                 logger.warning("⚠️ 未找到任何修改点，返回空列表")
-            
+
             logger.info(f"✅ 解析完成，共找到 {len(modifications)} 个修改点")
-            
+
         except Exception as e:
             logger.error(f"❌ 解析审阅结果失败: {e}")
             modifications = [
@@ -180,10 +188,12 @@ class ContractReviewService:
                     "position": "解析错误",
                     "original_content": "解析失败",
                     "risk_analysis": "解析失败",
+                    "risk_level":"未知",
                     "suggested_content": "解析失败",
+                    "reason":"解析失败",
                     "priority": "未知",
                     "action": "需要重新审阅"
                 }
             ]
-        
+
         return modifications
