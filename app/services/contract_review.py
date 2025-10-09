@@ -10,6 +10,7 @@ from pathlib import Path
 from langchain_core.messages import SystemMessage, HumanMessage
 from ..core.llm import init_llm
 from ..utils.mcp_client import MCPClient
+from ..utils.content_slicer import split_text_by_length
 
 logger = logging.getLogger(__name__)
 
@@ -20,13 +21,9 @@ class ContractReviewService:
         self.llm = init_llm()
         self.mcp_client = mcp_client
     
-    async def review_contract(self, contract_path: str) -> List[Dict[str, Any]]:
+    async def review_contract(self, chunk_text: str, user_role: str = "甲方") -> List[Dict[str, Any]]:
         """执行合同审阅"""
         try:
-            # 提取合同内容
-            # 使用绝对路径提取，避免相对路径导致服务器端找不到文件
-            contract_content = await self.mcp_client.extract_document_content(contract_path)
-            
             # 构建审阅提示词
             prompt_file_path = Path(__file__).parent.parent.parent / "prompts" / "contract_reviewer_prompt_new.txt"
             try:
@@ -34,22 +31,24 @@ class ContractReviewService:
                     base_prompt = f.read()
             except FileNotFoundError:
                 base_prompt = "你是一个专业的合同审查律师，请对以下合同进行专业审阅。"
-            
+
             review_prompt = f"""{base_prompt}
 
 ## 任务要求
-请对以下合同进行专业审阅：
+用户是{user_role}，请从{user_role}的角度分析合同风险。对以下合同进行专业审阅：
 
 ## 合同内容
 ```
-{contract_content}
+{chunk_text}
 ```
 
 请严格按照上述格式要求输出审阅结果。每个修改点必须包含：
 1. 【修改点X】- 修改点编号和标题
 2. 【原文】- 原始条款内容
 3. 【风险分析】- 法律风险分析
-4. 【修改后的内容】- 建议的修改内容
+4. 【风险等级】- （高/中/低；含评分 0–100）
+5. 【修改后的内容】- 建议的修改内容
+6. 【修改理由】- 说明法律条文与商业合理性
 
 请确保分析专业、建议可行、格式规范。
 """
@@ -63,7 +62,7 @@ class ContractReviewService:
             response = self.llm.invoke(messages)
             review_result = response.content
             modifications = self._parse_review_result(review_result)
-            
+
             return modifications
             
         except Exception as e:
@@ -140,29 +139,29 @@ class ContractReviewService:
             for match in matches:
                 point_num = match[0]
                 content = match[1].strip()
-
                 # 提取原文、风险分析、修改后内容
-                original_match = re.search(r'【原文】\n(.*?)(?=【风险分析】|【风险等级】|【修改后的内容】)', content, re.DOTALL)
+                original_match = re.search(r'【?\s*原文\s*】?[：:\s]*([\s\S]*?)(?=【?\s*风险分析\s*】?|【?\s*风险等级\s*】?|【?\s*修改后的内容\s*】?|$)', content, re.DOTALL)
                 if not original_match:
                     original_match = re.search(r'原文[：:]\s*(.*?)(?=风险|修改)', content, re.DOTALL)
-
-                risk_match = re.search(r'【风险分析】\n(.*?)(?=【风险等级】|【修改后的内容】)', content, re.DOTALL)
+                
+                risk_match = re.search(r'【?\s*风险分析\s*】?[：:\s]*([\s\S]*?)(?=【?\s*风险等级\s*】?|【?\s*修改后的内容\s*】?|$)', content, re.DOTALL)
                 if not risk_match:
                     risk_match = re.search(r'风险[：:]\s*(.*?)(?=修改)', content, re.DOTALL)
-
-                modified_match = re.search(r'【修改后的内容】\n(.*?)(?=【修改理由】|$)', content, re.DOTALL)
+                
+                modified_match = re.search(r'【?\s*修改后的内容\s*】?[：:\s]*([\s\S]*?)(?=【?\s*修改理由\s*】?|$)', content, re.DOTALL)
                 if not modified_match:
                     modified_match = re.search(r'修改[：:]\s*(.*?)(?=\n|$)', content, re.DOTALL)
 
                 # 风险等级
-                level_match = re.search(r'【风险等级】\n(.*?)(?=【修改后的内容】)', content, re.DOTALL)
+
+                level_match = re.search(r'【风险等级】[：:\s]*([\s\S]*?)(?=【修改后的内容】|【修改理由】|$)', content, re.DOTALL)
                 if not level_match:
-                    level_match = re.search(r'风险等级[：:]\s*(.*?)(?=修改)', content, re.DOTALL)
+                    level_match = re.search(r'风险等级[：:\s]*([\s\S]*?)(?=【修改后的内容】|修改|【修改理由】|$)', content, re.DOTALL)
 
                 # 修改理由
-                reason_match = re.search(r'【修改理由】\n(.*?)(?=\n|$)', content, re.DOTALL)
+                reason_match = re.search(r'【修改理由】[：:\s]*([\s\S]*?)(?=\n*【|$)', content, re.DOTALL)
                 if not reason_match:
-                    reason_match = re.search(r'修改理由[：:]\s*(.*?)(?=\n|$)', content, re.DOTALL)
+                    reason_match = re.search(r'修改理由[：:\s]*([\s\S]*?)(?=\n*【|$)', content, re.DOTALL)
 
                 modification = {
                     "position": f"修改点{point_num}",
