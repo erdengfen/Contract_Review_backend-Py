@@ -41,7 +41,7 @@ class ChatService:
         return self.sessions[session_id]
 
     
-    async def process_message(self, message: str, session_id: str, action: str = "chat", role: str = "甲方") -> Dict[str, Any]:
+    async def process_message(self, message: str, session_id: str, action: str = "chat", role: str = "甲方", contract_type: str = "") -> Dict[str, Any]:
         """处理聊天消息"""
         try:
             # 获取会话
@@ -92,7 +92,7 @@ class ChatService:
                             print(f"第{i}段长度：{len(c)} 字符")
                         #审阅部分
                         for idx, chunk in enumerate(chunks):
-                            modifications = await self.contract_review_service.review_contract(chunk,role)
+                            modifications = await self.contract_review_service.review_contract(chunk,role,contract_type)
                             yield {
                                 "response": f"✅ 第 {idx + 1}/{len(chunks)} 段审阅完成，发现 {len(modifications)} 个修改点。",
                                 "session_id": session_id,

@@ -104,7 +104,8 @@ async def chat_with_assistant(request: ChatRequest):
                 request.message,
                 request.session_id,
                 request.action,
-                request.role
+                request.role,
+                request.contract_type
             ):
                 # SSE 格式：data: <JSON字符串>\n\n
                 yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"

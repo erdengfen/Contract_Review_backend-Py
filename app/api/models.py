@@ -9,6 +9,7 @@ class ChatRequest(BaseModel):
     session_id: str
     action: Optional[str] = "chat"  # chat, review, modify, export
     role: Optional[str] = None
+    contract_type: Optional[str] = None #合同类型，暂时包括:服务合同service，买卖合同sales
 
 class ChatResponse(BaseModel):
     response: str
