@@ -25,7 +25,6 @@ class ContractReviewService:
         """执行合同审阅"""
         try:
             # 构建审阅提示词
-            print(user_role)
             prompt_file_path = Path(__file__).parent.parent.parent / "prompts" / "contract_reviewer_prompt_new.txt"
             try:
                 with open(prompt_file_path, 'r', encoding='utf-8') as f:

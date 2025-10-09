@@ -35,7 +35,7 @@ async def extract_parties_with_llm(file_path: str, llm) -> Dict[str, str]:
         text = read_docx_text(file_path)
         sample_text = text[:200]  # 取前200字分析
 
-        print(sample_text)
+        # print(sample_text)
 
         # 2. 构造提示词
         base_prompt = f"""
