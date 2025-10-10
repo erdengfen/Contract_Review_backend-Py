@@ -39,7 +39,7 @@ class ContractReviewService:
             except FileNotFoundError:
                 base_prompt = "你是一个专业的合同审查律师，请对以下合同进行专业审阅。"
 
-            print(base_prompt[:10])
+            # print(base_prompt[:10])
 
             review_prompt = f"""{base_prompt}
 
