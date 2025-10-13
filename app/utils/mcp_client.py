@@ -70,3 +70,17 @@ class MCPClient:
         except Exception as e:
             logger.error(f"❌ 提取文档内容失败: {e}")
             raise Exception(f"无法提取文档内容: {e}")
+
+    async def extract_pdf_document_content(self, file_path: str) -> str:
+        """提取pdf文档内容"""
+        try:
+            result = await self.call_tool("get_pdf_document_text", {"filename": str(Path(file_path).resolve())})
+            if result:
+                content = str(result)
+                logger.info(f"✅ 成功提取文档内容，长度: {len(content)} 字符")
+                return content
+            else:
+                raise Exception("工具返回空结果")
+        except Exception as e:
+            logger.error(f"❌ 提取文档内容失败: {e}")
+            raise Exception(f"无法提取文档内容: {e}")

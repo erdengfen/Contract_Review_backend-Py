@@ -2,6 +2,7 @@
 聊天服务
 """
 import logging
+import os
 from typing import Dict, List, Any
 from datetime import datetime
 
@@ -83,8 +84,14 @@ class ChatService:
                     if not session.get("contract_path"):
                         response_data["response"] = "请先上传合同文件，然后我可以帮您审阅。"
                     else:
-                        # 提取合同内容
-                        contract_content = await self.mcp_client.extract_document_content(session["contract_path"])
+                        contract_path = session["contract_path"]
+                        file_ext = os.path.splitext(contract_path)[1].lower()
+                        if file_ext == ".pdf":
+                            #提取pdf文档内容
+                            contract_content = await self.mcp_client.extract_pdf_document_content(session["contract_path"])
+                        else:
+                            # 提取合同内容
+                            contract_content = await self.mcp_client.extract_document_content(session["contract_path"])
                         # 分割文档，分多次进行审阅（大文件一次审阅不完）
                         chunks = split_text_by_length(contract_content, max_length=4000)
                         print(f"共分为 {len(chunks)} 段")
