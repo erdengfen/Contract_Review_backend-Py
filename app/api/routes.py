@@ -52,8 +52,9 @@ async def upload_document(
             session_id = str(uuid.uuid4())
         
         # 检查文件类型
-        if not file.filename.endswith('.docx'):
-            raise HTTPException(status_code=400, detail="只支持.docx格式的文件")
+        allowed_files = ('.docx','.pdf')
+        if not file.filename.lower().endswith(allowed_files):
+            raise HTTPException(status_code=400, detail="只支持.docx或.pdf格式的文件")
         
         # 保存文件（使用绝对路径，确保 MCP 服务器可访问）
         filename = f"{session_id}_{file.filename}"
@@ -103,7 +104,8 @@ async def chat_with_assistant(request: ChatRequest):
                 request.message,
                 request.session_id,
                 request.action,
-                request.role
+                request.role,
+                request.contract_type
             ):
                 # SSE 格式：data: <JSON字符串>\n\n
                 yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
