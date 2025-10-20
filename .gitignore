@@ -1,0 +1,28 @@
+# Poetry
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+/poetry.lock
+
+# Virtual Environments
+.venv/
+venv/
+
+# Environment
+.env
+.env.*
+
+# Logs
+*.log
+logs/
+
+# Alembic
+alembic.ini
+
+.idea
+__pycache__/
+/temp/
+
+/uv.lock
+/output/output.md
