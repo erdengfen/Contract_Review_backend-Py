@@ -31,14 +31,14 @@ app.include_router(router, prefix="/api")
 @app.on_event("startup")
 async def startup_event():
     """应用启动时初始化系统"""
-    logger.info("🚀 启动合同审阅系统...")
+    logger.info(" 启动合同审阅系统...")
     await init_services()
-    logger.info("✅ 系统初始化完成")
+    logger.info(" 系统初始化完成")
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """应用关闭时清理资源"""
-    logger.info("👋 合同审阅系统已关闭")
+    logger.info("合同审阅系统已关闭")
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8080)

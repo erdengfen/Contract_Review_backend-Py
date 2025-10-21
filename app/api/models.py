@@ -16,6 +16,7 @@ from typing import List, Dict, Any, Optional
 # 请求体模型（用户消息、会话 ID、动作类型）。
 class ChatRequest(BaseModel):
     message: Optional[str] = "审阅"
+    user_id: str  # 用户ID，用于多用户隔离
     session_id: str
     action: Optional[str] = "chat"  # chat, review, modify, export
     role: Optional[str] = None
@@ -24,6 +25,7 @@ class ChatRequest(BaseModel):
 # 响应体模型（响应消息、会话 ID、动作类型、修改建议、修改后的文档 URL、报告 URL）。
 class ChatResponse(BaseModel):
     response: str
+    user_id: str  # 用户ID
     session_id: str
     action: str
     modifications: Optional[List[Dict[str, Any]]] = None
@@ -34,6 +36,7 @@ class ChatResponse(BaseModel):
 class UploadResponse(BaseModel):
     success: bool
     message: str
+    user_id: str  # 用户ID
     session_id: str
     document_id: str
     party_a: Optional[str] = None #甲方名称

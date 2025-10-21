@@ -16,18 +16,20 @@ logger = logging.getLogger(__name__)
 
 class ContractReviewService:
     """合同审阅服务"""
-    
+    #初始化函数
     def __init__(self, mcp_client: MCPClient):
         self.llm = init_llm()
         self.mcp_client = mcp_client
     
-    async def review_contract(self, chunk_text: str, user_role: str = "甲方", contract_type: str = "") -> List[Dict[str, Any]]:
+    async def review_contract(self, chunk_text: str, user_role: str = "甲方", contract_type: str = "", 
+                            context: str = "") -> List[Dict[str, Any]]:
         """执行合同审阅"""
         try:
             # 构建审阅提示词
             base_prompt_dir = Path(__file__).parent.parent.parent / "prompts"
             if contract_type == "service":
                 prompt_file_path = base_prompt_dir / "contract_reviewer_prompt_service.txt"
+
             elif contract_type == "sales":
                 prompt_file_path = base_prompt_dir / "contract_reviewer_prompt_sales.txt"
             else:
@@ -39,12 +41,21 @@ class ContractReviewService:
             except FileNotFoundError:
                 base_prompt = "你是一个专业的合同审查律师，请对以下合同进行专业审阅。"
 
-            # print(base_prompt[:10])
+            # 构建上下文信息
+            context_info = ""
+            if context:
+                context_info = f"""
+
+## 审阅上下文
+{context}
+
+请结合上述上下文信息，确保审阅的连续性和一致性。
+"""
 
             review_prompt = f"""{base_prompt}
 
 ## 任务要求
-用户是{user_role}，请从{user_role}的角度分析合同风险。对以下合同进行专业审阅：
+用户是{user_role}，请从{user_role}的角度分析合同风险。对以下合同进行专业审阅：{context_info}
 
 ## 合同内容
 ```
@@ -59,7 +70,7 @@ class ContractReviewService:
 5. 【修改后的内容】- 建议的修改内容
 6. 【修改理由】- 说明法律条文与商业合理性
 
-请确保分析专业、建议可行、格式规范。
+请确保分析专业、建议可行、格式规范。结合上下文信息，保持审阅的连贯性。
 """
 
             messages = [

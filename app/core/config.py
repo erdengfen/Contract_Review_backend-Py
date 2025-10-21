@@ -8,7 +8,8 @@ load_dotenv()
 
 # 环境变量
 DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
-MCP_SERVER_URL = os.getenv('MCP_SERVER_URL', 'http://127.0.0.1:8081/mcp/')
+MCP_SERVER_URL = os.getenv('MCP_SERVER_URL', 'http://0.0.0.0:8081/mcp/')
+REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 
 # 应用配置
 APP_NAME = "合同审阅系统API"
@@ -19,3 +20,7 @@ DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 UPLOAD_DIR = "output/uploads"
 RESULTS_DIR = "output/results"
 SESSIONS_DIR = "output/sessions"
+
+# 会话配置
+SESSION_TIMEOUT = int(os.getenv('SESSION_TIMEOUT', '3600'))  # 1小时
+MAX_CONCURRENT_SESSIONS = int(os.getenv('MAX_CONCURRENT_SESSIONS', '100'))

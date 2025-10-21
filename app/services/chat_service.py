@@ -10,6 +10,7 @@ from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from ..core.llm import init_llm
 from .contract_review import ContractReviewService
 from .document_processor import DocumentProcessorService
+from .enhanced_memory_service import EnhancedMemoryService
 from ..utils.content_slicer import split_text_by_length
 
 logger = logging.getLogger(__name__)
@@ -18,35 +19,23 @@ class ChatService:
     """聊天服务"""
     
     def __init__(self, mcp_client, contract_review_service: ContractReviewService, 
-                 document_processor_service: DocumentProcessorService):
+                 document_processor_service: DocumentProcessorService, memory_service: EnhancedMemoryService):
         self.llm = init_llm()
         self.mcp_client = mcp_client
         self.contract_review_service = contract_review_service
         self.document_processor_service = document_processor_service
-        self.sessions: Dict[str, Dict[str, Any]] = {}
+        self.memory_service = memory_service
     
-    def get_or_create_session(self, session_id: str) -> Dict[str, Any]:
+    def get_or_create_session(self, user_id: str, session_id: str) -> Dict[str, Any]:
         """获取或创建会话"""
-        if session_id not in self.sessions:
-            self.sessions[session_id] = {
-                "session_id": session_id,
-                "dialogue_history": [],
-                "contract_path": "",
-                "contract_content": "",
-                "modifications": [],
-                "selected_mod_indices": [],
-                "modified_contract_path": "",
-                "report_path": "",
-                "created_at": datetime.now().isoformat()
-            }
-        return self.sessions[session_id]
+        return self.memory_service.get_or_create_user_session(user_id, session_id)
 
     
-    async def process_message(self, message: str, session_id: str, action: str = "chat", role: str = "甲方", contract_type: str = "") -> Dict[str, Any]:
+    async def process_message(self, message: str, user_id: str, session_id: str, action: str = "chat", role: str = "甲方", contract_type: str = "") -> Dict[str, Any]:
         """处理聊天消息"""
         try:
             # 获取会话
-            session = self.get_or_create_session(session_id)
+            session = self.get_or_create_session(user_id, session_id)
             
             # 添加用户消息到对话历史
             session["dialogue_history"].append({"role": "user", "content": message})
@@ -92,24 +81,51 @@ class ChatService:
                         else:
                             # 提取合同内容
                             contract_content = await self.mcp_client.extract_document_content(session["contract_path"])
-                        # 分割文档，分多次进行审阅（大文件一次审阅不完）
-                        chunks = split_text_by_length(contract_content, max_length=4000)
-                        print(f"共分为 {len(chunks)} 段")
-                        for i, c in enumerate(chunks, start=1):
-                            print(f"第{i}段长度：{len(c)} 字符")
-                        #审阅部分
-                        for idx, chunk in enumerate(chunks):
-                            modifications = await self.contract_review_service.review_contract(chunk,role,contract_type)
+                        
+                        # 保存合同内容到会话
+                        self.memory_service.update_user_session(user_id, session_id, {
+                            "contract_content": contract_content
+                        })
+                        
+                        # 保存合同分块到数据库
+                        saved_chunks = self.memory_service.save_contract_chunks(user_id, session_id, contract_content)
+                        logger.info(f"📄 合同分割为 {len(saved_chunks)} 个分块")
+                        
+                        # 审阅每个分块
+                        all_modifications = []
+                        for idx, chunk_data in enumerate(saved_chunks):
+                            # 构建审阅上下文
+                            context = self.memory_service.build_review_context(user_id, session_id, idx)
+                            
+                            # 执行审阅
+                            modifications = await self.contract_review_service.review_contract(
+                                chunk_data["chunk_content"], role, contract_type, context
+                            )
+                            
+                            # 保存审阅结果
+                            review_result = str(modifications)  # 将修改建议转换为字符串存储
+                            self.memory_service.save_review_result(user_id, session_id, idx, review_result)
+                            
+                            all_modifications.extend(modifications)
+                            
                             yield {
-                                "response": f"✅ 第 {idx + 1}/{len(chunks)} 段审阅完成，发现 {len(modifications)} 个修改点。",
+                                "response": f"第 {idx + 1}/{len(saved_chunks)} 段审阅完成，发现 {len(modifications)} 个修改点。",
+                                "user_id": user_id,
                                 "session_id": session_id,
                                 "action": "reviewing",
                                 "modifications": modifications,
                                 "modified_document_url": None,
                                 "report_url": None
                             }
+                        
+                        # 更新会话中的修改建议
+                        self.memory_service.update_user_session(user_id, session_id, {
+                            "modifications": all_modifications
+                        })
+                        
                         yield {
-                            "response": "全部审阅完成",
+                            "response": f"全部审阅完成，共发现 {len(all_modifications)} 个修改点。",
+                            "user_id": user_id,
                             "session_id": session_id,
                             "action": "review_complete"
                         }
