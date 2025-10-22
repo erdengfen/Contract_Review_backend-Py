@@ -8,7 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import APP_NAME, APP_VERSION
 from app.api.routes import router, init_services
-
+from app.config.config import settings
+from  app.router.user import router as user_router
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -40,5 +41,11 @@ async def shutdown_event():
     """应用关闭时清理资源"""
     logger.info("合同审阅系统已关闭")
 
+
+app.include_router(user_router, prefix="/api/user")
+
+
+
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    uvicorn.run(app, host=settings.server.host, port=settings.server.port)

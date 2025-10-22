@@ -12,7 +12,6 @@ from pathlib import Path
 from tqdm.auto import tqdm
 import subprocess
 import os
-
 import pdf2docx
 
 
@@ -601,6 +600,7 @@ def docx2html(doc_path, file_options):
 
 
     return convert_doc_to_html(doc=doc, file_options=file_options)
+
 
 def docx2md(doc_path, file_options):
     """将 .docx 文档转换为 Markdown，保留结构和基本样式"""
