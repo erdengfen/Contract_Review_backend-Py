@@ -1,6 +1,3 @@
-
-
-
 def split_text_by_length(text: str, max_length: int = 4000) -> list[str]:
     """将文本按指定字符数分割为多段"""
     chunks = []

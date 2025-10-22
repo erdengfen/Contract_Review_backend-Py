@@ -86,7 +86,7 @@ class ContractReviewService:
             return modifications
             
         except Exception as e:
-            logger.error(f"❌ 合同审阅失败: {e}")
+            logger.error(f" 合同审阅失败: {e}")
             return []
     
     def _parse_review_result(self, review_result: str) -> List[Dict[str, Any]]:
@@ -94,7 +94,7 @@ class ContractReviewService:
         modifications = []
         
         try:
-            logger.info(f"🔍 开始解析审阅结果，原始内容长度: {len(review_result)}")
+            logger.info(f" 开始解析审阅结果，原始内容长度: {len(review_result)}")
             
             # 多种格式的匹配模式
             patterns = [
@@ -114,12 +114,12 @@ class ContractReviewService:
             for pattern in patterns:
                 matches = re.findall(pattern, review_result, re.DOTALL)
                 if matches:
-                    logger.info(f"✅ 使用模式匹配到 {len(matches)} 个修改点")
+                    logger.info(f" 使用模式匹配到 {len(matches)} 个修改点")
                     break
             
             if not matches:
                 # 如果没有匹配到任何模式，尝试更宽松的匹配
-                logger.warning("⚠️ 未匹配到标准格式，尝试宽松匹配")
+                logger.warning("⚠ 未匹配到标准格式，尝试宽松匹配")
                 
                 # 尝试匹配包含"原文"、"风险"、"修改"等关键词的段落
                 sections = re.split(r'\n\s*\n', review_result)
@@ -196,12 +196,12 @@ class ContractReviewService:
 
             # 如果没有匹配到任何修改点，记录日志但不创建默认修改点
             if not modifications:
-                logger.warning("⚠️ 未找到任何修改点，返回空列表")
+                logger.warning(" 未找到任何修改点，返回空列表")
 
-            logger.info(f"✅ 解析完成，共找到 {len(modifications)} 个修改点")
+            logger.info(f" 解析完成，共找到 {len(modifications)} 个修改点")
 
         except Exception as e:
-            logger.error(f"❌ 解析审阅结果失败: {e}")
+            logger.error(f" 解析审阅结果失败: {e}")
             modifications = [
                 {
                     "position": "解析错误",

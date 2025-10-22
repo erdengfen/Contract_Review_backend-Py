@@ -26,23 +26,22 @@ class ChatService:
         self.document_processor_service = document_processor_service
         self.memory_service = memory_service
     
-    def get_or_create_session(self, user_id: str, session_id: str) -> Dict[str, Any]:
+    async def get_or_create_session(self, user_id: str, session_id: str) -> Dict[str, Any]:
         """获取或创建会话"""
-        return self.memory_service.get_or_create_user_session(user_id, session_id)
+        return await self.memory_service.get_or_create_user_session(user_id, session_id)
 
     
     async def process_message(self, message: str, user_id: str, session_id: str, action: str = "chat", role: str = "甲方", contract_type: str = "") -> Dict[str, Any]:
         """处理聊天消息"""
         try:
             # 获取会话
-            session = self.get_or_create_session(user_id, session_id)
+            session = await self.get_or_create_session(user_id, session_id)
             
             # 添加用户消息到对话历史
             session["dialogue_history"].append({"role": "user", "content": message})
             
             # 构建对话上下文
             context = {
-
                 "dialogue_history": session["dialogue_history"],
                 "contract_content": session.get("contract_content", ""),
                 "modifications": session.get("modifications", []),
@@ -52,7 +51,7 @@ class ChatService:
             
             # 获取大模型响应
             llm_response = await self._get_llm_response(message, context)
-            
+
             # 解析用户意图
             intent_result = await self._parse_user_intent(message, llm_response)
             intent = intent_result.get("intent", "chat")
@@ -67,47 +66,52 @@ class ChatService:
                 "modified_document_url": None,
                 "report_url": None
             }
-            
+
             if intent == "review" and action_type == "start_review":
-                    # 开始审阅流程
-                    if not session.get("contract_path"):
-                        response_data["response"] = "请先上传合同文件，然后我可以帮您审阅。"
+                if not session.get("contract_path"):
+                    response_data["response"] = "请先上传合同文件，然后我可以帮您审阅。"
+                else:
+                    # 提取合同内容
+                    contract_path = session["contract_path"]
+                    file_ext = os.path.splitext(contract_path)[1].lower()
+                    if file_ext == ".pdf":
+                        contract_content = await self.mcp_client.extract_pdf_document_content(contract_path)
                     else:
-                        contract_path = session["contract_path"]
-                        file_ext = os.path.splitext(contract_path)[1].lower()
-                        if file_ext == ".pdf":
-                            #提取pdf文档内容
-                            contract_content = await self.mcp_client.extract_pdf_document_content(session["contract_path"])
-                        else:
-                            # 提取合同内容
-                            contract_content = await self.mcp_client.extract_document_content(session["contract_path"])
-                        
-                        # 保存合同内容到会话
-                        self.memory_service.update_user_session(user_id, session_id, {
-                            "contract_content": contract_content
-                        })
-                        
-                        # 保存合同分块到数据库
-                        saved_chunks = self.memory_service.save_contract_chunks(user_id, session_id, contract_content)
-                        logger.info(f"📄 合同分割为 {len(saved_chunks)} 个分块")
-                        
-                        # 审阅每个分块
-                        all_modifications = []
-                        for idx, chunk_data in enumerate(saved_chunks):
-                            # 构建审阅上下文
-                            context = self.memory_service.build_review_context(user_id, session_id, idx)
+                        contract_content = await self.mcp_client.extract_document_content(contract_path)
+
+                    # 保存合同内容到会话
+                    await self.memory_service.update_user_session(user_id, session_id, {
+                        "contract_content": contract_content
+                    })
+
+                    # 保存合同分块
+                    saved_chunks = await self.memory_service.save_contract_chunks(user_id, session_id, contract_content)
+                    logger.info(f"合同分割为 {len(saved_chunks)} 个分块")
+
+                    all_modifications = []
+
+                    # 审阅每个分块
+                    for idx, chunk_data in enumerate(saved_chunks):
+                        try:
+                            chunk_content = chunk_data["chunk_content"]
+
+                            # 构建审阅上下文（包含前面分块的总结）
+                            review_context = await self.memory_service.build_review_context(user_id, session_id, idx)
                             
-                            # 执行审阅
+                            logger.info(f"开始审阅第 {idx + 1}/{len(saved_chunks)} 个分块，上下文长度: {len(review_context)}")
+
+                            # 直接使用contract_review_service进行审阅，传入完整的上下文
                             modifications = await self.contract_review_service.review_contract(
-                                chunk_data["chunk_content"], role, contract_type, context
+                                chunk_content, role, contract_type, review_context
                             )
-                            
+
                             # 保存审阅结果
-                            review_result = str(modifications)  # 将修改建议转换为字符串存储
-                            self.memory_service.save_review_result(user_id, session_id, idx, review_result)
-                            
+                            review_result = str(modifications)
+                            await self.memory_service.save_review_result(user_id, session_id, idx, review_result)
+
                             all_modifications.extend(modifications)
-                            
+
+                            # 发送进度更新
                             yield {
                                 "response": f"第 {idx + 1}/{len(saved_chunks)} 段审阅完成，发现 {len(modifications)} 个修改点。",
                                 "user_id": user_id,
@@ -115,21 +119,46 @@ class ChatService:
                                 "action": "reviewing",
                                 "modifications": modifications,
                                 "modified_document_url": None,
-                                "report_url": None
+                                "report_url": None,
+                                "progress": {
+                                    "current": idx + 1,
+                                    "total": len(saved_chunks),
+                                    "percentage": round((idx + 1) / len(saved_chunks) * 100, 1)
+                                }
                             }
-                        
-                        # 更新会话中的修改建议
-                        self.memory_service.update_user_session(user_id, session_id, {
-                            "modifications": all_modifications
-                        })
-                        
-                        yield {
-                            "response": f"全部审阅完成，共发现 {len(all_modifications)} 个修改点。",
-                            "user_id": user_id,
-                            "session_id": session_id,
-                            "action": "review_complete"
-                        }
-            
+                            
+                        except Exception as e:
+                            logger.error(f"审阅第 {idx + 1} 个分块失败: {e}")
+                            # 即使单个分块失败，也继续处理下一个分块
+                            yield {
+                                "response": f"第 {idx + 1}/{len(saved_chunks)} 段审阅失败，跳过此段继续处理。",
+                                "user_id": user_id,
+                                "session_id": session_id,
+                                "action": "reviewing",
+                                "modifications": [],
+                                "modified_document_url": None,
+                                "report_url": None,
+                                "progress": {
+                                    "current": idx + 1,
+                                    "total": len(saved_chunks),
+                                    "percentage": round((idx + 1) / len(saved_chunks) * 100, 1)
+                                },
+                                "error": str(e)
+                            }
+
+                    # 更新会话中的修改建议
+                    await self.memory_service.update_user_session(user_id, session_id, {
+                        "modifications": all_modifications
+                    })
+
+                    yield {
+                        "response": f"全部审阅完成，共发现 {len(all_modifications)} 个修改点。",
+                        "user_id": user_id,
+                        "session_id": session_id,
+                        "action": "review_complete"
+                    }
+
+
             elif intent == "modify" and action_type == "apply_modifications":
                 # 修改合同
                 if not session.get("modifications"):
@@ -146,7 +175,7 @@ class ChatService:
                     session["report_path"] = result.get("report_path", "")
                     response_data["modified_document_url"] = f"/api/download/{session_id}/modified"
                     response_data["report_url"] = f"/api/download/{session_id}/report"
-                    response_data["response"] = "✅ 文档修改完成！修改后的合同和报告已生成。"
+                    response_data["response"] = " 文档修改完成！修改后的合同和报告已生成。"
             
             # 添加助手响应到对话历史
             session["dialogue_history"].append({"role": "assistant", "content": response_data["response"]})
@@ -154,7 +183,7 @@ class ChatService:
             return
             
         except Exception as e:
-            logger.error(f"❌ 处理聊天消息失败: {e}")
+            logger.error(f" 处理聊天消息失败: {e}")
             yield {
                 "response": f"抱歉，处理您的请求时出现错误：{str(e)}",
                 "session_id": session_id,
@@ -197,8 +226,9 @@ class ChatService:
             messages.append(HumanMessage(content=user_input))
             
             # 如果有合同内容，添加到上下文中
-            if contract_content:
-                messages.append(SystemMessage(content=f"当前合同内容摘要：\n{contract_content[:1000]}..."))
+            contract_context = context.get("contract_review_context", "")
+            if contract_context:
+                messages.append(SystemMessage(content=f"{contract_context}"))
             
             # 如果有修改建议，添加到上下文中
             if modifications:
@@ -212,7 +242,7 @@ class ChatService:
             return response.content.strip()
             
         except Exception as e:
-            logger.error(f"❌ 获取大模型响应失败: {e}")
+            logger.error(f" 获取大模型响应失败: {e}")
             return "抱歉，我遇到了一些技术问题，请稍后再试。"
     
     async def _parse_user_intent(self, user_input: str, llm_response: str) -> Dict[str, Any]:
@@ -249,5 +279,5 @@ class ChatService:
             return {"intent": "chat", "action": "continue_dialogue"}
             
         except Exception as e:
-            logger.error(f"❌ 解析用户意图失败: {e}")
+            logger.error(f" 解析用户意图失败: {e}")
             return {"intent": "chat", "action": "continue_dialogue"}

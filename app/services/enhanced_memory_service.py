@@ -138,7 +138,7 @@ class EnhancedMemoryService:
     async def save_contract_chunks(self, user_id: str, session_id: str, contract_content: str) -> List[Dict[str, Any]]:
         """保存合同分块（支持多用户隔离）"""
         try:
-            # 分割合同内容
+            # 分割合同内容（4000字）
             chunks = split_text_by_length(contract_content, max_length=4000)
             
             # 保存到数据库
@@ -199,10 +199,13 @@ class EnhancedMemoryService:
             previous_reviews = await self._get_previous_reviews(user_id, session_id, current_chunk_index)
             if previous_reviews:
                 context_parts.append("## 前面分块的审阅结果")
+                context_parts.append(f"已审阅 {len(previous_reviews)} 个分块，以下是关键审阅要点：")
                 for review in previous_reviews:
                     context_parts.append(f"### 第{review['chunk_index'] + 1}段审阅要点")
                     context_parts.append(f"主要问题: {review.get('summary', '无')}")
                     context_parts.append(f"风险等级: {review.get('risk_level', '未知')}")
+                    if review.get('key_issues'):
+                        context_parts.append(f"关键问题: {', '.join(review['key_issues'][:3])}")  # 最多显示3个关键问题
                     context_parts.append("")
             
             # 3. 获取当前分块的前后文
@@ -254,8 +257,7 @@ class EnhancedMemoryService:
                                 "chunk_index": i,
                                 "summary": review_summary["summary"],
                                 "risk_level": review_summary["risk_level"],
-                                "keys_issues": review_summary["keys_issues"]
-
+                                "key_issues": review_summary["key_issues"]
                             })
                             break
             
@@ -275,7 +277,7 @@ class EnhancedMemoryService:
                 prev_chunk = await self._get_chunk_content(user_id, session_id, current_chunk_index - 1)
                 if prev_chunk:
                     # 取后半部分作为上文
-                    prev_half = prev_chunk[-500:] if len(prev_chunk) > 500 else prev_chunk
+                    prev_half = prev_chunk[-500:] if len(prev_chunk) > 500 else prev_chunk #########################
                     context_parts.append(f"上文: {prev_half}")
             
             # 获取后一个分块的前半部分
@@ -377,6 +379,31 @@ class EnhancedMemoryService:
             
         except Exception as e:
             logger.error(f"保存审阅结果失败: {e}")
+            return False
+    
+    async def delete_user_session(self, user_id: str, session_id: str) -> bool:
+        """删除用户会话及其相关数据"""
+        try:
+            # 从数据库删除
+            success = self.db.delete_user_session(user_id, session_id)
+            
+            if success:
+                # 清理Redis缓存
+                cache_key = self._get_redis_key(user_id, session_id, "session")
+                self.redis_client.delete(cache_key)
+                
+                # 清理相关的上下文缓存
+                pattern = f"contract_review:{user_id}:{session_id}:context:*"
+                context_keys = self.redis_client.keys(pattern)
+                if context_keys:
+                    self.redis_client.delete(*context_keys)
+                
+                logger.info(f"删除用户会话成功: {user_id}/{session_id}")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"删除用户会话失败: {e}")
             return False
     
     async def cleanup_expired_sessions(self) -> int:
