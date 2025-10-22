@@ -48,11 +48,26 @@ class RedisConfig(BaseModel):
     socket_connect_timeout: int = Field(5, description="Redis连接超时时间（秒）")
     socket_timeout: int = Field(10, description="Redis操作超时时间（秒）")
 
+class JWTConfig(BaseModel):
+    secret_key: str = Field(..., description="JWT密钥")
+    refresh_secret_key: str = Field(..., description="JWT刷新密钥")
+    algorithm: str = Field("HS256", description="JWT算法")
+    access_token_expire_minutes: int = Field(10080, description="访问令牌过期时间（分钟）")
+    refresh_token_expire_days: int = Field(7, description="刷新令牌过期时间（天）")
+
 class Config(BaseModel):
+    APP_NAME: str = Field("合同审阅系统API", description="应用名称")
+    APP_VERSION: str = Field("1.0.0", description="应用版本")
+    UPLOAD_DIR: str = Field("output/uploads", description="合同上传目录")
+    RESULTS_DIR: str = Field("output/results", description="合同审阅结果目录")
+    SESSIONS_DIR: str = Field("output/sessions", description="会话目录")
+    SESSION_TIMEOUT: int = Field(3600, description="会话超时时间（秒）")
+    MAX_CONCURRENT_SESSIONS: int = Field(100, description="最大并发会话数")
     server: ServerConfig
     openai_config: OpenAIConfig
     database: DatabaseConfig
     redis_config: RedisConfig
+    jwt_config: JWTConfig
 
 
 def load_config(config_path=BASE_DIR / "app" / "config" / "config.yaml"):

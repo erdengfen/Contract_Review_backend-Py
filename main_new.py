@@ -3,13 +3,15 @@
 """
 import logging
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI,Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import APP_NAME, APP_VERSION
 from app.api.routes import router, init_services
 from app.config.config import settings
-from  app.router.user import router as user_router
+from app.middlewares.auth import verify_token
+
+from  app.router import user, contract, review_task
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -25,7 +27,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+# 鉴权逻辑
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    auth_result = await verify_token(request)
+    if auth_result:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(content=auth_result.model_dump(), status_code=auth_result.code)
+    response = await call_next(request)
+    return response
 # 注册路由
 app.include_router(router, prefix="/api")
 
@@ -42,8 +52,9 @@ async def shutdown_event():
     logger.info("合同审阅系统已关闭")
 
 
-app.include_router(user_router, prefix="/api/user")
-
+app.include_router(user.router, prefix="/api/user", tags=["用户管理"])
+app.include_router(contract.router, prefix="/api/contract", tags=["合同管理"])
+app.include_router(review_task.router, prefix="/api/review_task", tags=["合同审阅"])
 
 
 
