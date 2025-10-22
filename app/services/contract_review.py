@@ -16,18 +16,20 @@ logger = logging.getLogger(__name__)
 
 class ContractReviewService:
     """合同审阅服务"""
-    
+    #初始化函数
     def __init__(self, mcp_client: MCPClient):
         self.llm = init_llm()
         self.mcp_client = mcp_client
     
-    async def review_contract(self, chunk_text: str, user_role: str = "甲方", contract_type: str = "") -> List[Dict[str, Any]]:
+    async def review_contract(self, chunk_text: str, user_role: str = "甲方", contract_type: str = "", 
+                            context: str = "") -> List[Dict[str, Any]]:
         """执行合同审阅"""
         try:
             # 构建审阅提示词
             base_prompt_dir = Path(__file__).parent.parent.parent / "prompts"
             if contract_type == "service":
                 prompt_file_path = base_prompt_dir / "contract_reviewer_prompt_service.txt"
+
             elif contract_type == "sales":
                 prompt_file_path = base_prompt_dir / "contract_reviewer_prompt_sales.txt"
             else:
@@ -39,12 +41,21 @@ class ContractReviewService:
             except FileNotFoundError:
                 base_prompt = "你是一个专业的合同审查律师，请对以下合同进行专业审阅。"
 
-            # print(base_prompt[:10])
+            # 构建上下文信息
+            context_info = ""
+            if context:
+                context_info = f"""
+
+## 审阅上下文
+{context}
+
+请结合上述上下文信息，确保审阅的连续性和一致性。
+"""
 
             review_prompt = f"""{base_prompt}
 
 ## 任务要求
-用户是{user_role}，请从{user_role}的角度分析合同风险。对以下合同进行专业审阅：
+用户是{user_role}，请从{user_role}的角度分析合同风险。对以下合同进行专业审阅：{context_info}
 
 ## 合同内容
 ```
@@ -59,7 +70,7 @@ class ContractReviewService:
 5. 【修改后的内容】- 建议的修改内容
 6. 【修改理由】- 说明法律条文与商业合理性
 
-请确保分析专业、建议可行、格式规范。
+请确保分析专业、建议可行、格式规范。结合上下文信息，保持审阅的连贯性。
 """
 
             messages = [
@@ -129,9 +140,7 @@ class ContractReviewService:
                             "position": f"修改点{match.group(1)}",
                             "original_content": "",
                             "risk_analysis": "",
-                            "suggested_content": "",
-                            "priority": "中",
-                            "action": "建议修改"
+                            "suggested_content": ""
                         }
                     
                     # 提取内容
@@ -145,7 +154,7 @@ class ContractReviewService:
                 
                 if current_mod:
                     modifications.append(current_mod)
-            
+
             # 处理匹配到的修改点
             for match in matches:
                 point_num = match[0]
@@ -164,6 +173,7 @@ class ContractReviewService:
                     modified_match = re.search(r'修改[：:]\s*(.*?)(?=\n|$)', content, re.DOTALL)
 
                 # 风险等级
+
                 level_match = re.search(r'【风险等级】[：:\s]*([\s\S]*?)(?=【修改后的内容】|【修改理由】|$)', content, re.DOTALL)
                 if not level_match:
                     level_match = re.search(r'风险等级[：:\s]*([\s\S]*?)(?=【修改后的内容】|修改|【修改理由】|$)', content, re.DOTALL)
@@ -183,13 +193,13 @@ class ContractReviewService:
                 }
 
                 modifications.append(modification)
-            
+
             # 如果没有匹配到任何修改点，记录日志但不创建默认修改点
             if not modifications:
                 logger.warning("⚠️ 未找到任何修改点，返回空列表")
-            
+
             logger.info(f"✅ 解析完成，共找到 {len(modifications)} 个修改点")
-            
+
         except Exception as e:
             logger.error(f"❌ 解析审阅结果失败: {e}")
             modifications = [
@@ -204,5 +214,5 @@ class ContractReviewService:
                     "action": "需要重新审阅"
                 }
             ]
-        
+
         return modifications

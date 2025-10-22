@@ -27,11 +27,11 @@ class MCPClient:
             })
             
             self.tools = await self.client.get_tools()
-            logger.info(f"✅ MCP客户端初始化成功，获取到 {len(self.tools)} 个工具")
+            logger.info(f" MCP客户端初始化成功，获取到 {len(self.tools)} 个工具")
             return True
             
         except Exception as e:
-            logger.error(f"❌ MCP客户端初始化失败: {e}")
+            logger.error(f" MCP客户端初始化失败: {e}")
             return False
     
     async def call_tool(self, tool_name: str, arguments: dict) -> Any:

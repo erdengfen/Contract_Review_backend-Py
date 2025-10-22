@@ -1,11 +1,18 @@
 # DeepSeek API配置
 DEEPSEEK_API_KEY=sk-0a9850a1f92c40c79b6e05b10099f006
 
-# 合同文件路径
-CONTRACT_FILE=data/校园主页升级改版服务合同.docx
-
 # MCP服务器配置
-MCP_SERVER_URL=http://127.0.0.1:8080/mcp
+MCP_SERVER_URL=http://0.0.0.0:8081/mcp
+
+# Redis配置
+REDIS_URL=redis://localhost:6379/0
+
+# 会话配置
+SESSION_TIMEOUT=3600
+MAX_CONCURRENT_SESSIONS=100
+
+# 应用配置
+DEBUG=False
 
 # 日志级别
 LOG_LEVEL=INFO 

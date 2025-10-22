@@ -13,7 +13,7 @@ from pathlib import Path
 def check_mcp_server():
     """检查MCP服务器是否正在运行"""
     try:
-        response = requests.get("http://127.0.0.1:8081/mcp/",
+        response = requests.get("http://0.0.0.0:8081/mcp/",
                               headers={"Accept": "text/event-stream"},
                               timeout=5)
         # 在Streamable HTTP模式下，406状态码表示服务器要求text/event-stream
@@ -37,7 +37,7 @@ def start_mcp_server():
     try:
         # 设置环境变量
         env = os.environ.copy()
-        env['HOST'] = '127.0.0.1'
+        env['HOST'] = '0.0.0.0'
         env['PORT'] = '8081'
         
         # 启动服务器，但工作目录设为contract_review
