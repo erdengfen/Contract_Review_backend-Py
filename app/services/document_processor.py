@@ -80,7 +80,7 @@ class DocumentProcessorService:
             }
             
         except Exception as e:
-            logger.error(f"❌ 文档修改失败: {e}")
+            logger.error(f" 文档修改失败: {e}")
             return {"modified_contract_path": "", "report_path": ""}
     
     def _generate_report(self, contract_path: str, modified_path: str, 
@@ -131,5 +131,5 @@ class DocumentProcessorService:
             return str(report_path)
             
         except Exception as e:
-            logger.error(f"❌ 生成报告失败: {e}")
+            logger.error(f" 生成报告失败: {e}")
             return ""

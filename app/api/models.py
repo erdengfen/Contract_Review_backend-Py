@@ -1,5 +1,5 @@
 """
-API请求/响应模型
+API请求/响应模型(做校验使用）
 """
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
@@ -39,5 +39,6 @@ class UploadResponse(BaseModel):
     user_id: str  # 用户ID
     session_id: str
     document_id: str
+    file_url:str
     party_a: Optional[str] = None #甲方名称
     party_b: Optional[str] = None #乙方名称

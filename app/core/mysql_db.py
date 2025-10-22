@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from app.config.config import settings
 
 
-engine = create_engine(settings.database.database_url)
+engine = create_engine(settings.database.database_url())
 
 Base = declarative_base()
 # 自动创建表结构
