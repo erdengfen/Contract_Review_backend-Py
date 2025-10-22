@@ -1,10 +1,16 @@
 
+APP_NAME: "合同审阅系统API"
+APP_VERSION: "1.0.0"
+UPLOAD_DIR: "output/uploads"
+RESULTS_DIR: "output/results"
+SESSIONS_DIR: "output/sessions"
+SESSION_TIMEOUT: 3600
+MAX_CONCURRENT_SESSIONS: 100
 server:
   host: 0.0.0.0
   port: 8080
   timeout: 60
   workers: 4
-
 
 openai_config:
   api_key: "sk-1234567890abcdef1234567890abcdef"
@@ -12,10 +18,10 @@ openai_config:
 
 database:
   host: localhost
-  port: 27017
-  name: contract_review
-  username: admin
-  password: admin123
+  port: 3306
+  name: "contract_review"
+  username: root
+  password: "123456"
   pool_size: 10
   pool_timeout: 30
 
@@ -23,12 +29,18 @@ database:
 redis_config:
   host: localhost
   port: 6379
-  db: 0
+  db: 10
   password: redis123
   decode_responses: True
   max_connections: 20
   socket_connect_timeout: 5
   socket_timeout: 10
 
-
+jwt_config:
+  secret_key: replace-with-strong-secret-key
+  refresh_secret_key: replace-with-strong-refresh-secret-key
+  algorithm: HS256
+  # 60分钟*24小时*7天
+  access_token_expire_minutes: 10080
+  refresh_token_expire_days: 7
 

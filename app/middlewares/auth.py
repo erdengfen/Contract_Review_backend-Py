@@ -37,7 +37,7 @@ auth_scheme = HTTPBearer()
 redis_handler = RedisHandler()
 
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None):
+async def create_access_token(data: dict, expires_delta: timedelta | None = None):
     """
     创建访问令牌并存储到 Redis
     :param data: 包含用户信息的字典
@@ -61,7 +61,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return encoded_jwt
 
 
-def create_refresh_token(data: dict, expires_delta: timedelta | None = None):
+async def create_refresh_token(data: dict, expires_delta: timedelta | None = None):
     """
     创建刷新令牌并存储到 Redis
     :param data: 包含用户信息的字典
