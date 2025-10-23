@@ -98,7 +98,7 @@ async def verify_refresh_token(refresh_token: str):
         if user_id:
             stored_refresh_token = redis_handler.get(f"refresh_token:{user_id}")
             if stored_refresh_token:
-                stored_refresh_token = stored_refresh_token.decode('utf-8')
+                stored_refresh_token = stored_refresh_token
 
             if stored_refresh_token != refresh_token:
                 error = BaseSchema(code=401, msg="Invalid refresh token", data=None)
@@ -138,7 +138,7 @@ async def get_current_user(token: HTTPAuthorizationCredentials = Depends(auth_sc
         # 检查 Redis 中的 access_token，使用 user_id 作为键
         stored_access_token = redis_handler.get(f"access_token:{user_id}")
         if stored_access_token:
-            stored_access_token = stored_access_token.decode('utf-8')
+            stored_access_token = stored_access_token
 
         if stored_access_token != token.credentials:
             # raise credentials_exception
@@ -147,7 +147,7 @@ async def get_current_user(token: HTTPAuthorizationCredentials = Depends(auth_sc
 
         # raise credentials_exception
         return BaseSchema(code=401, msg=f"JWT error: {e}", data=None)
-    user = get_user_by_username(db=db, username=token_data.username)
+    user =await get_user_by_username(db, token_data.username)
     if user is None:
         return BaseSchema(code=401, msg="user is None", data=None)
         # raise credentials_exception
@@ -219,17 +219,18 @@ async def optional_get_current_user(token: HTTPAuthorizationCredentials = Depend
         # 检查Redis中的access_token
         stored_access_token = redis_handler.get(f"access_token:{user_id}")
         if stored_access_token:
-            stored_access_token = stored_access_token.decode('utf-8')
+            stored_access_token = stored_access_token
 
         if stored_access_token != token.credentials:
             return None
 
-        user = get_user_by_username(db=db, username=username)
+        user =await get_user_by_username(db, username)
         if user is None:
             return None
 
         return user
-    except Exception:
+    except Exception as e:
+        print(f"optional_get_current_user error: {e}")
         # 捕获所有异常，包括JWTError、KeyError等
         # 不记录具体错误，以避免日志过于冗长
         return None
@@ -299,13 +300,13 @@ async def get_current_user_websocket(
         # 检查 Redis 中的 access_token
         stored_access_token = redis_handler.get(f"access_token:{user_id}")
         if stored_access_token:
-            stored_access_token = stored_access_token.decode('utf-8')
+            stored_access_token = stored_access_token
 
         if stored_access_token != token:
             await websocket.close(code=1008)
             raise HTTPException(status_code=401, detail="Invalid authentication token")
 
-        user = get_user_by_username(db=db, username=username)
+        user =await get_user_by_username(db,username)
 
         if user is None:
             await websocket.close(code=1008)

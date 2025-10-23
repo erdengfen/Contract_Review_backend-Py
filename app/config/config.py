@@ -55,6 +55,15 @@ class JWTConfig(BaseModel):
     access_token_expire_minutes: int = Field(10080, description="访问令牌过期时间（分钟）")
     refresh_token_expire_days: int = Field(7, description="刷新令牌过期时间（天）")
 
+
+class LoggingConfig(BaseModel):
+    logger_name: str = Field("app_logger", description="日志记录器名称")
+    log_dir: str = Field("logs", description="日志目录")
+    log_file: str = Field("app.log", description="日志文件名")
+    log_level: str = Field("INFO", description="日志级别")
+    backup_days: int = Field(30, description="日志备份天数")
+    encoding: str = Field("utf-8", description="日志编码")
+
 class Config(BaseModel):
     APP_NAME: str = Field("合同审阅系统API", description="应用名称")
     APP_VERSION: str = Field("1.0.0", description="应用版本")
@@ -68,6 +77,7 @@ class Config(BaseModel):
     database: DatabaseConfig
     redis_config: RedisConfig
     jwt_config: JWTConfig
+    logging_config: LoggingConfig
 
 
 def load_config(config_path=BASE_DIR / "app" / "config" / "config.yaml"):

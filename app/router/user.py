@@ -33,7 +33,7 @@ async def create_user(user: UserCreate, db: Session = Depends(get_db)):
     return GenericResponse(data=new_user)
 
 
-@router.get("/{user_id}", response_model=GenericResponse[UserResponse], summary="根据ID查询用户")
+@router.get("/get_user/{user_id}", response_model=GenericResponse[UserResponse], summary="根据ID查询用户")
 async def get_user(user_id: int, db: Session = Depends(get_db)):
     """根据ID查询用户"""
     db_user = await user_crud.get_user_by_id(db, user_id)
@@ -41,15 +41,15 @@ async def get_user(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="用户不存在")
     return GenericResponse(data=db_user)
 
-# @router.get("/me", response_model=GenericResponse[UserResponse], summary="获取当前登录用户信息")
-# async def get_current_user(
-#         db: Session = Depends(get_db),
-#     current_user = Depends(optional_get_current_user)):
-#     """获取当前登录用户信息"""
-#     if not current_user:
-#         raise HTTPException(status_code=401, detail="未登录或令牌无效")
-#
-#     return GenericResponse(data=current_user)
+@router.get("/me", response_model=GenericResponse[UserResponse], summary="获取当前登录用户信息")
+async def get_current_user(
+        db: Session = Depends(get_db),
+        current_user = Depends(optional_get_current_user)):
+    """获取当前登录用户信息"""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="未登录或令牌无效")
+
+    return GenericResponse(data=current_user)
 
 
 

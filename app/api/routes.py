@@ -12,8 +12,6 @@
 """
 import uuid
 import logging
-from distutils.command.upload import upload
-from http.client import responses
 from os.path import split
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form

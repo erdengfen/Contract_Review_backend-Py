@@ -14,14 +14,20 @@ RUN apt-get update && apt-get install -y \
     libffi-dev \
     libssl-dev \
     git \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+
+RUN python3 -m pip install --user poetry -i https://pypi.tuna.tsinghua.edu.cn/simple/
 
 # 复制依赖并安装
-COPY requirements.txt /app/
-RUN pip install --upgrade pip setuptools wheel \
-    && pip install --no-cache-dir -r requirements.txt
+#COPY requirements.txt /app/
 
-# 复制项目代码
+COPY pyproject.toml /app/
+
+RUN #pip install --upgrade pip setuptools wheel \
+#    && pip install --no-cache-dir -r requirements.txt \
+
+RUN poetry install --no-root --no-dev -i https://pypi.tuna.tsinghua.edu.cn/simple/
+# 复制项目代码s
 COPY . /app
 
 # 暴露端口（FastAPI 默认端口）
@@ -29,4 +35,5 @@ EXPOSE 8080
 
 # 启动命令（你的主程序）
 COPY . .
-CMD ["python","main_new.py"]
+
+CMD ["uvicorn", "main_new:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "8"]
