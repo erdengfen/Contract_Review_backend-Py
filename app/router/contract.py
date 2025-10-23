@@ -15,11 +15,12 @@ from sqlalchemy.orm import Session
 from app.core.dependencies import get_db
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from app.config.config import settings
+from app.curd.contract_file import CRUDContract
 from app.middlewares.auth import optional_get_current_user
 from app.models import ContractFile
 from  app.schemas.base import GenericResponse
 from app.schemas.contract_file import UploadResponse
-
+from fastapi.responses import FileResponse
 
 router = APIRouter(tags=["合同管理"])
 """
@@ -28,7 +29,7 @@ router = APIRouter(tags=["合同管理"])
 
 
 @router.post("/upload", response_model=GenericResponse[UploadResponse], summary="上传合同文件")
-async def upload_file(
+async def upload_contract_file(
     current_user=Depends(optional_get_current_user),
     db: Session = Depends(get_db),
     file: UploadFile = File(...),
@@ -41,54 +42,34 @@ async def upload_file(
         return GenericResponse(code=400, msg="文件名不能为空")
 
     try:
-        file_type = file.filename.split(".")[-1]
-        save_path = os.path.join(settings.UPLOAD_DIR, file.filename)
-
-        with open(save_path, "wb") as f:
-            shutil.copyfileobj(file.file, f)
-
-        new_file = ContractFile(
-            user_id=current_user.id,
-            title=file.filename,
-            file_path=save_path,
-            file_type=file_type,
-            upload_time=datetime.now(),
-            status="uploaded"
-        )
-        db.add(new_file)
-        db.commit()
-        db.refresh(new_file)
-
-        return GenericResponse(
-            code=200,
-            msg="上传成功",
-            data=UploadResponse(
-                file_id=new_file.id,
-                title=new_file.title,
-                file_path=new_file.file_path,
-                file_type=new_file.file_type
-            )
-        )
+        upload_result = CRUDContract.create_contract_file(db=db, user_id=current_user.id, file=file)
+        return GenericResponse(code=200, msg="上传成功", data=upload_result)
     except Exception as e:
         db.rollback()
         return GenericResponse(code=500, msg=f"文件上传失败: {str(e)}")
 
 
 @router.get("/download/{file_id}", summary="下载文件")
-async def download_file(file_id: int, db: Session = Depends(get_db)):
-    """下载文件"""
-    file_record = db.query(ContractFile).filter(ContractFile.id == file_id).first()
+async def download_contract_file(file_id: int, db: Session = Depends(get_db)):
+    """下载合同文件"""
+    file_record = CRUDContract.get_contract_file(db=db, file_id=file_id)
     if not file_record:
         raise HTTPException(status_code=404, detail="文件不存在")
 
-    file_path = file_record.file_path
-    if not os.path.exists(file_path):
+    if not os.path.exists(file_record.file_path):
         raise HTTPException(status_code=404, detail="文件已丢失")
 
     return FileResponse(
-        path=file_path,
-        filename=os.path.basename(file_path),
+        path=file_record.file_path,
+        filename=os.path.basename(file_record.file_path),
         media_type="application/octet-stream"
     )
 
 
+@router.delete("/{file_id}", response_model=GenericResponse, summary="删除合同文件")
+async def delete_contract_file(file_id: int, db: Session = Depends(get_db)):
+    """删除合同文件"""
+    success = CRUDContract.delete_contract_file(db=db, file_id=file_id)
+    if not success:
+        return GenericResponse(code=404, msg="文件不存在或删除失败")
+    return GenericResponse(code=200, msg="文件删除成功")

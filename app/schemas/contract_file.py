@@ -13,7 +13,11 @@ from pydantic import Field
 
 
 class UploadResponse(BaseModel):
-    file_id: int
-    title: str
-    file_path: str
-    file_type: str
+    file_id: int = Field(..., description="合同文件ID")
+    title: str = Field(..., description="合同标题")
+    file_path: str = Field(..., description="合同文件路径")
+    file_type: str = Field(..., description="合同文件类型")
+    file_url: str = Field(..., description="文件访问URL")
+
+    class Config:
+        orm_mode = True

@@ -28,6 +28,7 @@ jwt_config=settings.jwt_config
 default_exclude_paths = [
     "/openapi.json",
     "/docs",
+    "/static/**",
     "/api/user/create",
     "/api/user/login"
 ]
@@ -153,7 +154,15 @@ async def get_current_user(token: HTTPAuthorizationCredentials = Depends(auth_sc
         # raise credentials_exception
     return user
 
-
+def path_is_excluded(path: str, exclude_paths: list):
+    for p in exclude_paths:
+        # 支持 /static/** 模式
+        if p.endswith("/**"):
+            if path.startswith(p[:-3]):
+                return True
+        elif path == p:
+            return True
+    return False
 async def verify_token(request: Request, exclude_paths: list = None):
     """
     验证令牌
@@ -164,7 +173,7 @@ async def verify_token(request: Request, exclude_paths: list = None):
     if exclude_paths is None:
         exclude_paths = default_exclude_paths
 
-    if request.url.path in exclude_paths:
+    if path_is_excluded(request.url.path, exclude_paths):
         return
     try:
         credentials: HTTPAuthorizationCredentials = await auth_scheme(request)

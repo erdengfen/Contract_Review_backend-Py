@@ -2,22 +2,33 @@
 合同审阅系统 - 重构后的主应用
 """
 import logging
+from pathlib import Path
+
 import uvicorn
 from fastapi import FastAPI,Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.staticfiles import StaticFiles
 
 from app.core.config import APP_NAME, APP_VERSION
 from app.api.routes import router, init_services
 from app.config.config import settings
-from app.middlewares.auth import verify_token
 
-from  app.router import user, contract, review_task
+from app.middlewares.auth import verify_token
+from fastapi.responses import FileResponse
+from  app.router import user, contract, review_task,chat_session
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # 创建FastAPI应用
 app = FastAPI(title=APP_NAME, version=APP_VERSION)
+
+
+@app.get('/static/{filename}')
+async def get_file(filename: str):
+    file_path = f'./{settings.UPLOAD_DIR}/{filename}'
+    return FileResponse(file_path)
+
 
 # 添加CORS中间件
 app.add_middleware(
@@ -39,6 +50,14 @@ async def auth_middleware(request: Request, call_next):
 # 注册路由
 app.include_router(router, prefix="/api")
 
+
+app.mount(
+    "/static",
+    StaticFiles(directory=settings.UPLOAD_DIR),
+    name="static",
+)
+
+
 @app.on_event("startup")
 async def startup_event():
     """应用启动时初始化系统"""
@@ -53,7 +72,8 @@ async def shutdown_event():
 
 
 app.include_router(user.router, prefix="/api/user", tags=["用户管理"])
-app.include_router(contract.router, prefix="/api/contract", tags=["合同管理"])
+app.include_router(chat_session.router, prefix="/api/chat_session", tags=["会话管理"])
+app.include_router(contract.router, prefix="/api/contract", tags=["文件上传下载"])
 app.include_router(review_task.router, prefix="/api/review_task", tags=["合同审阅"])
 
 

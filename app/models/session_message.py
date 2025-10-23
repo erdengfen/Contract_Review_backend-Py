@@ -20,6 +20,7 @@ class Session(Base):
     contract_id = Column(Integer,comment="所属文件")
     user_id = Column(Integer,comment="发起用户")
     title = Column(String(256),comment="会话主题")
+    session_type = Column(String(16),comment="会话类型")
     created_at = Column(TIMESTAMP, default=datetime.now, comment="创建时间")
     updated_at = Column(TIMESTAMP, default=datetime.now, comment="更新时间")
 

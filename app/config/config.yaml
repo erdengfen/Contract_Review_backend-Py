@@ -17,20 +17,20 @@ openai_config:
   model: "gpt-3.5-turbo"
 
 database:
-  host: localhost
+  host: 117.72.56.2
   port: 3306
   name: "contract_review"
   username: root
-  password: "123456"
+  password: chongqinglingdong123456
   pool_size: 10
   pool_timeout: 30
 
 
 redis_config:
-  host: localhost
+  host: 117.72.56.2
   port: 6379
   db: 10
-  password: redis123
+  password: chongqinglingdong123456
   decode_responses: True
   max_connections: 20
   socket_connect_timeout: 5
@@ -44,3 +44,10 @@ jwt_config:
   access_token_expire_minutes: 10080
   refresh_token_expire_days: 7
 
+logging_config:
+  logger_name: "app_logger"
+  log_dir: "logs"
+  log_file: "app.log"
+  log_level: "INFO"
+  backup_days: 30
+  encoding: "utf-8"

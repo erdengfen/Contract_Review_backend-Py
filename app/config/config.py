@@ -72,6 +72,7 @@ class Config(BaseModel):
     SESSIONS_DIR: str = Field("output/sessions", description="会话目录")
     SESSION_TIMEOUT: int = Field(3600, description="会话超时时间（秒）")
     MAX_CONCURRENT_SESSIONS: int = Field(100, description="最大并发会话数")
+
     server: ServerConfig
     openai_config: OpenAIConfig
     database: DatabaseConfig
