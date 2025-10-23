@@ -30,7 +30,7 @@ def read_docx_text(file_path: str) -> str:
         return "\n".join(texts)
 
     except Exception as e:
-        raise RuntimeError(f"❌ 读取 Word 文件失败: {e}")
+        raise RuntimeError(f" 读取 Word 文件失败: {e}")
 
 
 def read_pdf_first_page(file_path: str) -> str:

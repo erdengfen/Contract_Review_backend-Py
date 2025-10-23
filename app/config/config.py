@@ -14,7 +14,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 class ServerConfig(BaseModel):
 
     host: str = Field("0.0.0.0", description="服务器主机地址")
-    port: int = Field(8080, description="服务器端口")
+    port: int = Field(8081, description="服务器端口")
     timeout: int = Field(60, description="请求超时时间（秒）")
     workers: int = Field(4, description="工作进程数")
 
