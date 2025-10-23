@@ -2,6 +2,7 @@
 合同审阅系统 - 重构后的主应用
 """
 import logging
+import os
 from pathlib import Path
 
 import uvicorn
@@ -28,7 +29,8 @@ app = FastAPI(title=APP_NAME, version=APP_VERSION)
 async def get_file(filename: str):
     file_path = f'./{settings.UPLOAD_DIR}/{filename}'
     return FileResponse(file_path)
-
+if not os.path.exists(settings.UPLOAD_DIR):
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 
 # 添加CORS中间件
 app.add_middleware(
@@ -49,7 +51,6 @@ async def auth_middleware(request: Request, call_next):
     return response
 # 注册路由
 app.include_router(router, prefix="/api")
-
 
 app.mount(
     "/static",

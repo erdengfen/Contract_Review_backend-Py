@@ -23,4 +23,4 @@ class ContractFile(Base):
     file_path = Column(String(512),comment="存储路径")
     file_type = Column(String(16),comment="文件类型（pdf/docx）")
     upload_time = Column(TIMESTAMP, default=datetime.now, comment="上传时间")
-    status = Column(String(32),default="uploaded",comment="状态（uploaded/parsed/reviewed）")
+    status = Column(String(32),default="uploaded",comment="状态（uploaded/parsed/delete）")

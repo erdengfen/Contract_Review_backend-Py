@@ -33,21 +33,23 @@ async def create_session(
 
     # 验证关联合同文件
     if request.contract_id:
-        contract = CRUDContract.get_contract_file(db=db, file_id=request.contract_id)
+        contract = await CRUDContract.get_contract_file(db=db, file_id=request.contract_id)
         if not contract:
             return GenericResponse(code=404, msg="关联的合同文件不存在")
 
     try:
-        session_obj = CRUDSession.create_session(
+        session_obj =await CRUDSession.create_session(
             db=db,
             user_id=current_user.id,
             title=request.title,
+            session_type=request.session_type,
             contract_id=request.contract_id
         )
 
         response_data = SessionResponse(
             session_id=session_obj.id,
             title=session_obj.title,
+            session_type=session_obj.session_type,
             contract_id=session_obj.contract_id,
             created_at=session_obj.created_at.isoformat()
         )
@@ -71,13 +73,14 @@ async def list_user_sessions(
         return GenericResponse(code=401, msg="用户未登录")
 
     skip = (page - 1) * size
-    sessions = CRUDSession.get_user_sessions(db=db, user_id=current_user.id, skip=skip, limit=size)
-    total = CRUDSession.count_user_sessions(db=db, user_id=current_user.id)
+    sessions =await CRUDSession.get_user_sessions(db=db, user_id=current_user.id, skip=skip, limit=size)
+    total =await  CRUDSession.count_user_sessions(db=db, user_id=current_user.id)
 
     session_list = [
         SessionResponse(
             session_id=s.id,
             title=s.title,
+            session_type=s.session_type,
             contract_id=s.contract_id,
             created_at=s.created_at.isoformat(),
         )
@@ -101,14 +104,14 @@ async def delete_user_session(
     if not current_user:
         return GenericResponse(code=401, msg="用户未登录")
 
-    success = CRUDSession.delete_session(db=db, session_id=session_id, user_id=current_user.id)
+    success =await  CRUDSession.delete_session(db=db, session_id=session_id, user_id=current_user.id)
     if not success:
         return GenericResponse(code=404, msg="会话不存在或删除失败")
 
     return GenericResponse(code=200, msg="会话删除成功")
 
 
-@router.put("/{session_id}/title", response_model=GenericResponse[SessionResponse], summary="修改会话标题")
+@router.post("/{session_id}/title", response_model=GenericResponse[SessionResponse], summary="修改会话标题")
 async def update_session_title(
     session_id: int,
     request: UpdateSessionTitleRequest = Body(...),
@@ -119,7 +122,7 @@ async def update_session_title(
     if not current_user:
         return GenericResponse(code=401, msg="用户未登录")
 
-    session_obj = CRUDSession.update_session_title(
+    session_obj =await  CRUDSession.update_session_title(
         db=db,
         session_id=session_id,
         user_id=current_user.id,
@@ -134,6 +137,7 @@ async def update_session_title(
         data=SessionResponse(
             session_id=session_obj.id,
             title=session_obj.title,
+            session_type=session_obj.session_type,
             contract_id=session_obj.contract_id,
             created_at=session_obj.created_at.isoformat(),
         )
@@ -150,7 +154,7 @@ async def send_message(
     if not current_user:
         return GenericResponse(code=401, msg="用户未登录")
 
-    msg = CRUDMessage.create_message(
+    msg =await  CRUDMessage.create_message(
         db=db,
         session_id=request.session_id,
         role=request.role,
@@ -173,6 +177,6 @@ async def list_messages(
         return GenericResponse(code=401, msg="用户未登录")
 
     skip = (page - 1) * size
-    messages = CRUDMessage.get_messages(db=db, session_id=session_id, skip=skip, limit=size)
+    messages =await  CRUDMessage.get_messages(db=db, session_id=session_id, skip=skip, limit=size)
     return GenericResponse(code=200, msg="查询成功", data=messages)
 

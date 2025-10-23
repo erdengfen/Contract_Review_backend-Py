@@ -42,7 +42,7 @@ async def upload_contract_file(
         return GenericResponse(code=400, msg="文件名不能为空")
 
     try:
-        upload_result = CRUDContract.create_contract_file(db=db, user_id=current_user.id, file=file)
+        upload_result =await CRUDContract.create_contract_file(db=db, user_id=current_user.id, file=file)
         return GenericResponse(code=200, msg="上传成功", data=upload_result)
     except Exception as e:
         db.rollback()
@@ -52,7 +52,7 @@ async def upload_contract_file(
 @router.get("/download/{file_id}", summary="下载文件")
 async def download_contract_file(file_id: int, db: Session = Depends(get_db)):
     """下载合同文件"""
-    file_record = CRUDContract.get_contract_file(db=db, file_id=file_id)
+    file_record =await CRUDContract.get_contract_file(db=db, file_id=file_id)
     if not file_record:
         raise HTTPException(status_code=404, detail="文件不存在")
 
@@ -69,7 +69,7 @@ async def download_contract_file(file_id: int, db: Session = Depends(get_db)):
 @router.delete("/{file_id}", response_model=GenericResponse, summary="删除合同文件")
 async def delete_contract_file(file_id: int, db: Session = Depends(get_db)):
     """删除合同文件"""
-    success = CRUDContract.delete_contract_file(db=db, file_id=file_id)
+    success =await CRUDContract.delete_contract_file(db=db, file_id=file_id)
     if not success:
         return GenericResponse(code=404, msg="文件不存在或删除失败")
     return GenericResponse(code=200, msg="文件删除成功")

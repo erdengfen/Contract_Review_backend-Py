@@ -22,7 +22,7 @@ from urllib.parse import quote
 class CRUDContract:
 
     @staticmethod
-    def create_contract_file(db: DBSession, user_id: int, file) -> UploadResponse:
+    async def create_contract_file(db: DBSession, user_id: int, file) -> UploadResponse:
         """上传并保存合同文件"""
         file_type = file.filename.split(".")[-1]
         save_dir = os.path.join(settings.UPLOAD_DIR, str(user_id))
@@ -58,9 +58,10 @@ class CRUDContract:
         )
 
 
-    def get_contract_file(db: DBSession, file_id: int) -> ContractFile:
+    async def get_contract_file(db: DBSession, file_id: int) -> ContractFile:
         """根据文件ID查询合同文件"""
         data_res= db.query(ContractFile).filter(ContractFile.id == file_id).first()
+
         return ContractFile(
             id=data_res.id,
             user_id=data_res.user_id,
@@ -68,5 +69,22 @@ class CRUDContract:
             file_path=data_res.file_path,
             file_type=data_res.file_type,
             upload_time=data_res.upload_time,
-            status=data_res.status
+
         )
+
+
+    async def delete_contract_file(db: DBSession, file_id: int) -> bool:
+        """
+
+        :param file_id:
+        :return:
+        """
+        file_data= db.query(ContractFile).filter(ContractFile.id == file_id).first()
+        if file_data:
+
+            file_data.status = "deleted"
+            db.commit()
+            db.refresh(file_data)
+            return True
+        else:
+            return False

@@ -15,7 +15,7 @@ class CreateSessionRequest(BaseModel):
     """创建会话请求体"""
     title: str = Field(..., description="会话主题")
     contract_id: Optional[int] = Field(None, description="关联的合同文件ID（可选）")
-    session_type: str = Field(..., description="会话类型")
+    session_type: Optional[str] = Field(..., description="会话类型")
 
 class SessionResponse(BaseModel):
     """创建会话响应体"""

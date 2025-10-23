@@ -15,11 +15,12 @@ from typing import Optional
 class CRUDSession:
 
     @staticmethod
-    def create_session(db: DBSession, user_id: int, title: str, contract_id: Optional[int] = None):
+    async def create_session(db: DBSession, user_id: int, title: str, contract_id: Optional[int] = None,session_type:[str]='default'):
         """创建新会话"""
         new_session = Session(
             title=title,
             user_id=user_id,
+            session_type=session_type,
             contract_id=contract_id,
             created_at=datetime.now(),
             updated_at=datetime.now()
@@ -30,7 +31,7 @@ class CRUDSession:
         return new_session
 
     @staticmethod
-    def get_user_sessions(db: DBSession, user_id: int, skip: int = 0, limit: int = 10):
+    async def get_user_sessions(db: DBSession, user_id: int, skip: int = 0, limit: int = 10):
         """分页获取用户的会话历史"""
         return (
             db.query(Session)
@@ -42,12 +43,12 @@ class CRUDSession:
         )
 
     @staticmethod
-    def count_user_sessions(db: DBSession, user_id: int) -> int:
+    async def count_user_sessions(db: DBSession, user_id: int) -> int:
         """统计用户的会话总数"""
         return db.query(Session).filter(Session.user_id == user_id).count()
 
     @staticmethod
-    def delete_session(db: DBSession, session_id: int, user_id: int):
+    async def delete_session(db: DBSession, session_id: int, user_id: int):
         """删除用户指定会话"""
         session_obj = db.query(Session).filter(
             Session.id == session_id,
@@ -64,7 +65,7 @@ class CRUDSession:
             return False
 
     @staticmethod
-    def update_session_title(db: DBSession, session_id: int, user_id: int, new_title: str) :
+    async def update_session_title(db: DBSession, session_id: int, user_id: int, new_title: str) :
         """更新会话标题"""
         session_obj = db.query(Session).filter(
             Session.id == session_id,
@@ -86,7 +87,7 @@ class CRUDSession:
 
 class CRUDMessage:
     @staticmethod
-    def create_message(db: DBSession, session_id: int, role: str, content: str, parent_id: int = None):
+    async def create_message(db: DBSession, session_id: int, role: str, content: str, parent_id: int = None):
         """创建新消息"""
         message_index = (
             db.query(Message)
@@ -108,7 +109,7 @@ class CRUDMessage:
         return msg
 
     @staticmethod
-    def get_messages(db: DBSession, session_id: int, skip: int = 0, limit: int = 20):
+    async def get_messages(db: DBSession, session_id: int, skip: int = 0, limit: int = 20):
         """分页获取会话消息"""
         return (
             db.query(Message)
