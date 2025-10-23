@@ -6,18 +6,14 @@
 @Date    ：2025/10/22 14:45 
 """
 import os
-import shutil
-import uuid
-from datetime import datetime
-from pathlib import Path
 
 from sqlalchemy.orm import Session
 from app.core.dependencies import get_db
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
-from app.config.config import settings
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+
 from app.curd.contract_file import CRUDContract
 from app.middlewares.auth import optional_get_current_user
-from app.models import ContractFile
+
 from  app.schemas.base import GenericResponse
 from app.schemas.contract_file import UploadResponse
 from fastapi.responses import FileResponse

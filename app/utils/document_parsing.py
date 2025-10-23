@@ -294,8 +294,6 @@ def docx2html(doc_path, file_options):
     def extract_images(paragraph, file_options):
         """提取段落中的图片并上传至OSS，返回上传后的图片URL"""
         img_html = ""
-
-
         temp_dir = os.path.join(os.getcwd(), "temp")
         if not os.path.exists(temp_dir):
             os.makedirs(temp_dir)

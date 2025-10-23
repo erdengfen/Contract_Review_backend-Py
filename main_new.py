@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 
 from app.core.config import APP_NAME, APP_VERSION
-from app.api.routes import router, init_services
+# from app.api.routes import router, init_services  # 已废弃
 from app.config.config import settings
 
 from app.middlewares.auth import verify_token
@@ -49,8 +49,8 @@ async def auth_middleware(request: Request, call_next):
         return JSONResponse(content=auth_result.model_dump(), status_code=auth_result.code)
     response = await call_next(request)
     return response
-# 注册路由
-app.include_router(router, prefix="/api")
+# 注册路由 - 已废弃旧的api路由
+# app.include_router(router, prefix="/api")
 
 app.mount(
     "/static",
@@ -63,7 +63,7 @@ app.mount(
 async def startup_event():
     """应用启动时初始化系统"""
     logger.info(" 启动合同审阅系统...")
-    await init_services()
+    # await init_services()  # 已废弃旧的初始化逻辑
     logger.info(" 系统初始化完成")
 
 @app.on_event("shutdown")

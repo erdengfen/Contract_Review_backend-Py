@@ -21,16 +21,16 @@ class ContractReviewService:
         self.llm = init_llm()
         self.mcp_client = mcp_client
     
-    async def review_contract(self, chunk_text: str, user_role: str = "甲方", contract_type: str = "", 
+    async def review_contract(self, chunk_text: str, stance: str = "甲方", intensity: str = "标准", 
                             context: str = "") -> List[Dict[str, Any]]:
         """执行合同审阅"""
         try:
             # 构建审阅提示词
             base_prompt_dir = Path(__file__).parent.parent.parent / "prompts"
-            if contract_type == "service":
+            # 根据审阅尺度选择不同的提示词
+            if intensity == "严格":
                 prompt_file_path = base_prompt_dir / "contract_reviewer_prompt_service.txt"
-
-            elif contract_type == "sales":
+            elif intensity == "宽松":
                 prompt_file_path = base_prompt_dir / "contract_reviewer_prompt_sales.txt"
             else:
                 prompt_file_path = base_prompt_dir / "contract_reviewer_prompt_base.txt"
@@ -52,10 +52,20 @@ class ContractReviewService:
 请结合上述上下文信息，确保审阅的连续性和一致性。
 """
 
+            # 根据审阅尺度调整提示词强度
+            intensity_desc = {
+                "严格": "请进行严格审阅，重点关注所有潜在风险点，包括细微的法律风险",
+                "标准": "请进行标准审阅，重点关注主要风险点",
+                "宽松": "请进行宽松审阅，重点关注重大风险点"
+            }
+            
             review_prompt = f"""{base_prompt}
 
 ## 任务要求
-用户是{user_role}，请从{user_role}的角度分析合同风险。对以下合同进行专业审阅：{context_info}
+用户是{stance}，请从{stance}的角度分析合同风险。审阅尺度：{intensity}。
+{intensity_desc.get(intensity, "请进行标准审阅")}
+
+对以下合同进行专业审阅：{context_info}
 
 ## 合同内容
 ```

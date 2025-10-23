@@ -44,7 +44,7 @@ class CRUDContract:
         db.commit()
         db.refresh(new_file)
 
-        # ✅ 构造文件访问 URL（静态映射路径）
+        # 构造文件访问 URL（静态映射路径）
         # 注意 URL 中中文或空格文件名要编码
         relative_path = f"/static/{user_id}/{quote(file.filename)}"
         file_url =f"{relative_path}"
@@ -58,21 +58,13 @@ class CRUDContract:
         )
 
 
+    @staticmethod
     async def get_contract_file(db: DBSession, file_id: int) -> ContractFile:
         """根据文件ID查询合同文件"""
-        data_res= db.query(ContractFile).filter(ContractFile.id == file_id).first()
-
-        return ContractFile(
-            id=data_res.id,
-            user_id=data_res.user_id,
-            title=data_res.title,
-            file_path=data_res.file_path,
-            file_type=data_res.file_type,
-            upload_time=data_res.upload_time,
-
-        )
+        return db.query(ContractFile).filter(ContractFile.id == file_id).first()
 
 
+    @staticmethod
     async def delete_contract_file(db: DBSession, file_id: int) -> bool:
         """
 

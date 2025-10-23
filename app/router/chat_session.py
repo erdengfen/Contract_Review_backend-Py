@@ -13,7 +13,7 @@ from app.curd.contract_file import CRUDContract
 from app.middlewares.auth import optional_get_current_user
 from sqlalchemy.orm import Session as DBSession
 from app.schemas.session_chat import SessionResponse, CreateSessionRequest, UpdateSessionTitleRequest, \
-    SessionListResponse, MessageResponse, MessageUpdateRequest, MessageCreateRequest
+    SessionListResponse, MessageResponse, MessageCreateRequest
 
 from app.schemas.base import GenericResponse
 
