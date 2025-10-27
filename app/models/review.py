@@ -18,6 +18,7 @@ class ReviewTask(Base):
     __tablename__ = "review_task"
 
     id = Column(Integer, primary_key=True,comment="任务ID")
+    session_id = Column(Integer,comment="会话ID")
     contract_id = Column(Integer,comment="所属文件")
     user_id = Column(Integer,comment="发起用户")
     stance = Column(String(32),comment="审查立场")
@@ -34,6 +35,7 @@ class ReviewResult(Base):
     __tablename__ = "review_result"
 
     id = Column(Integer, primary_key=True,comment="结果ID")
+    session_id = Column(Integer,comment="会话ID")
     task_id = Column(Integer,comment="任务ID")
     overall_risk = Column(String(16),comment="Overall Risk")
     summary = Column(Text,comment="Summary")

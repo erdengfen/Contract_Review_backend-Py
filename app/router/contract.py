@@ -69,3 +69,5 @@ async def delete_contract_file(file_id: int, db: Session = Depends(get_db)):
     if not success:
         return GenericResponse(code=404, msg="文件不存在或删除失败")
     return GenericResponse(code=200, msg="文件删除成功")
+
+

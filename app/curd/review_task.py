@@ -26,6 +26,7 @@ class CRUDReviewTask:
         """创建审阅任务"""
         review_task = ReviewTask(
             contract_id=request.contract_id,
+            session_id=request.session_id,
             user_id=user_id,
             stance=request.stance,
             intensity=request.intensity,

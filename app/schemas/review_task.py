@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 class ReviewTaskCreateRequest(BaseModel):
     """创建审阅任务请求"""
     contract_id: int = Field(..., description="合同文件ID")
+    session_id: int = Field(..., description="会话ID")
     stance: str = Field(..., description="审查立场（甲方/乙方）")
     intensity: str = Field(..., description="审查尺度（严格/标准/宽松）")
     description: Optional[str] = Field(None, description="审查需求描述")
@@ -21,6 +22,7 @@ class ReviewTaskCreateRequest(BaseModel):
 class ReviewTaskResponse(BaseModel):
     """审阅任务响应"""
     id: int = Field(..., description="任务ID")
+    session_id: int = Field(..., description="会话ID")
     contract_id: int = Field(..., description="所属文件ID")
     user_id: int = Field(..., description="发起用户ID")
     stance: str = Field(..., description="审查立场")
@@ -34,6 +36,7 @@ class ReviewTaskResponse(BaseModel):
 class ReviewResultResponse(BaseModel):
     """审阅结果响应"""
     id: int = Field(..., description="结果ID")
+    session_id: int = Field(..., description="会话ID")
     task_id: int = Field(..., description="任务ID")
     overall_risk: str = Field(..., description="整体风险等级")
     summary: str = Field(..., description="审阅摘要")

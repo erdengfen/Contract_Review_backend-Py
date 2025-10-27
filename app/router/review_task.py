@@ -27,8 +27,7 @@ from app.models.user import User
 from app.services.contract_review import ContractReviewService
 from app.utils.mcp_client import MCPClient
 from app.utils.content_slicer import split_text_by_length
-
-logger = logging.getLogger(__name__)
+from app.utils.logs_utils import log_module
 
 router = APIRouter(tags=["合同审阅"])
 """
@@ -39,7 +38,7 @@ router = APIRouter(tags=["合同审阅"])
 review_progress = {}
 
 
-@router.post("/create", response_model=GenericResponse[ReviewTaskResponse])
+@router.post("/create", response_model=GenericResponse[ReviewTaskResponse], summary="创建合同审阅任务")
 async def create_review_task(
     request: ReviewTaskCreateRequest,
     current_user: User = Depends(get_current_user),
@@ -58,7 +57,7 @@ async def create_review_task(
         # 创建审阅任务
         review_task = CRUDReviewTask.create_review_task(db, current_user.id, request)
         
-        logger.info(f"用户 {current_user.id} 创建审阅任务 {review_task.id}")
+        log_module.info(f"用户 {current_user.id} 创建审阅任务 {review_task.id}")
         
         return GenericResponse(
             code=200,
@@ -66,6 +65,7 @@ async def create_review_task(
             data=ReviewTaskResponse(
                 id=review_task.id,
                 contract_id=review_task.contract_id,
+                session_id=review_task.session_id,
                 user_id=review_task.user_id,
                 stance=review_task.stance,
                 intensity=review_task.intensity,
@@ -79,11 +79,11 @@ async def create_review_task(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"创建审阅任务失败: {e}")
+        log_module.error(f"创建审阅任务失败: {e}")
         raise HTTPException(status_code=500, detail=f"创建审阅任务失败: {str(e)}")
 
 
-@router.post("/start/{task_id}", response_model=GenericResponse[dict])
+@router.post("/start/{task_id}", response_model=GenericResponse[dict], summary="开始执行合同审阅任务")
 async def start_review_task(
     task_id: int,
     background_tasks: BackgroundTasks,
@@ -125,7 +125,7 @@ async def start_review_task(
             current_user.id
         )
         
-        logger.info(f"开始执行审阅任务 {task_id}")
+        log_module.info(f"开始执行审阅任务 {task_id}")
         
         return GenericResponse(
             code=200,
@@ -136,11 +136,11 @@ async def start_review_task(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"开始审阅任务失败: {e}")
+        log_module.error(f"开始审阅任务失败: {e}")
         raise HTTPException(status_code=500, detail=f"开始审阅任务失败: {str(e)}")
 
 
-@router.get("/progress/{task_id}", response_model=GenericResponse[ReviewProgressResponse])
+@router.get("/progress/{task_id}", response_model=GenericResponse[ReviewProgressResponse], summary="获取合同审阅进度")
 async def get_review_progress(
     task_id: int,
     current_user: User = Depends(get_current_user),
@@ -184,11 +184,11 @@ async def get_review_progress(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"获取审阅进度失败: {e}")
+        log_module.error(f"获取审阅进度失败: {e}")
         raise HTTPException(status_code=500, detail=f"获取审阅进度失败: {str(e)}")
 
 
-@router.get("/result/{task_id}", response_model=GenericResponse[dict])
+@router.get("/result/{task_id}", response_model=GenericResponse[dict], summary="获取合同审阅结果")
 async def get_review_result(
     task_id: int,
     current_user: User = Depends(get_current_user),
@@ -221,6 +221,7 @@ async def get_review_result(
             data={
                 "task": ReviewTaskResponse(
                     id=review_task.id,
+                    session_id=review_task.session_id,
                     contract_id=review_task.contract_id,
                     user_id=review_task.user_id,
                     stance=review_task.stance,
@@ -232,6 +233,7 @@ async def get_review_result(
                 ),
                 "result": ReviewResultResponse(
                     id=review_result.id,
+                    session_id=review_result.session_id,
                     task_id=review_result.task_id,
                     overall_risk=review_result.overall_risk,
                     summary=review_result.summary,
@@ -254,11 +256,11 @@ async def get_review_result(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"获取审阅结果失败: {e}")
+        log_module.error(f"获取审阅结果失败: {e}")
         raise HTTPException(status_code=500, detail=f"获取审阅结果失败: {str(e)}")
 
 
-@router.get("/list", response_model=GenericResponse[ReviewTaskListResponse])
+@router.get("/list", response_model=GenericResponse[ReviewTaskListResponse], summary="获取用户的合同审阅任务列表")
 async def get_review_task_list(
     skip: int = 0,
     limit: int = 20,
@@ -272,6 +274,7 @@ async def get_review_task_list(
         task_responses = [
             ReviewTaskResponse(
                 id=task.id,
+                session_id=task.session_id,
                 contract_id=task.contract_id,
                 user_id=task.user_id,
                 stance=task.stance,
@@ -293,11 +296,11 @@ async def get_review_task_list(
         )
         
     except Exception as e:
-        logger.error(f"获取任务列表失败: {e}")
+        log_module.error(f"获取任务列表失败: {e}")
         raise HTTPException(status_code=500, detail=f"获取任务列表失败: {str(e)}")
 
 
-@router.delete("/{task_id}", response_model=GenericResponse[dict])
+@router.delete("/{task_id}", response_model=GenericResponse[dict], summary="删除合同审阅任务")
 async def delete_review_task(
     task_id: int,
     current_user: User = Depends(get_current_user),
@@ -322,7 +325,7 @@ async def delete_review_task(
         if task_id in review_progress:
             del review_progress[task_id]
         
-        logger.info(f"用户 {current_user.id} 删除审阅任务 {task_id}")
+        log_module.info(f"用户 {current_user.id} 删除审阅任务 {task_id}")
         
         return GenericResponse(
             code=200,
@@ -333,7 +336,7 @@ async def delete_review_task(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"删除审阅任务失败: {e}")
+        log_module.error(f"删除审阅任务失败: {e}")
         raise HTTPException(status_code=500, detail=f"删除审阅任务失败: {str(e)}")
 
 
@@ -350,7 +353,7 @@ async def execute_review_task(
     
     db = SessionLocal()
     try:
-        logger.info(f"开始执行审阅任务 {task_id}")
+        log_module.info(f"开始执行审阅任务 {task_id}")
         
         # 更新进度
         review_progress[task_id]["message"] = "正在获取合同文件..."
@@ -400,10 +403,10 @@ async def execute_review_task(
                 
                 all_modifications.extend(modifications)
                 
-                logger.info(f"任务 {task_id} 第 {idx + 1} 个分块审阅完成，发现 {len(modifications)} 个修改点")
+                log_module.info(f"任务 {task_id} 第 {idx + 1} 个分块审阅完成，发现 {len(modifications)} 个修改点")
                 
             except Exception as e:
-                logger.error(f"任务 {task_id} 第 {idx + 1} 个分块审阅失败: {e}")
+                log_module.error(f"任务 {task_id} 第 {idx + 1} 个分块审阅失败: {e}")
                 continue
         
         # 更新进度
@@ -443,10 +446,10 @@ async def execute_review_task(
         review_progress[task_id]["status"] = "completed"
         review_progress[task_id]["message"] = f"审阅完成，共发现 {len(all_modifications)} 个风险点"
         
-        logger.info(f"审阅任务 {task_id} 执行完成")
+        log_module.info(f"审阅任务 {task_id} 执行完成")
         
     except Exception as e:
-        logger.error(f"执行审阅任务 {task_id} 失败: {e}")
+        log_module.error(f"执行审阅任务 {task_id} 失败: {e}")
         review_progress[task_id]["status"] = "failed"
         review_progress[task_id]["message"] = f"审阅失败: {str(e)}"
         
