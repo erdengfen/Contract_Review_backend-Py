@@ -27,3 +27,6 @@ __pycache__/
 /uv.lock
 /output/output.md
 /output/
+/data/
+
+*.tar

@@ -15,7 +15,8 @@ from app.config.config import settings
 from app.models.contract import ContractFile
 from app.models.user import User
 from app.schemas.contract_file import UploadResponse
-
+from app.utils.contract_parser import ContractParser
+from app.core.llm import llm
 
 from urllib.parse import quote
 
@@ -44,6 +45,15 @@ class CRUDContract:
         db.commit()
         db.refresh(new_file)
 
+        #调用llm解析合同金额，甲乙方
+        parsed_data = await ContractParser.extract_parties_with_llm(save_path, llm)
+
+        #将信息保存至数据库
+        new_file.party_a = parsed_data.get("party_a")
+        new_file.party_b = parsed_data.get("party_b")
+        new_file.contract_value = parsed_data.get("contract_value")
+        db.commit()
+
         # 构造文件访问 URL（静态映射路径）
         # 注意 URL 中中文或空格文件名要编码
         relative_path = f"/static/{user_id}/{quote(file.filename)}"
@@ -54,7 +64,10 @@ class CRUDContract:
             title=new_file.title,
             file_path=new_file.file_path,
             file_type=new_file.file_type,
-            file_url=file_url
+            file_url=file_url,
+            party_a=new_file.party_a,
+            party_b=new_file.party_b,
+            contract_value=new_file.contract_value,
         )
 
 

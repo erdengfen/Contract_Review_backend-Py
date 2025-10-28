@@ -14,3 +14,5 @@ def init_llm():
         temperature=0,
         model_provider="deepseek",
     )
+
+llm = init_llm()

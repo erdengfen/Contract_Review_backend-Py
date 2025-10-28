@@ -8,13 +8,13 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# 安装系统依赖（aiohttp、pydantic、uvicorn 等可能需要编译支持）
-#RUN apt-get update && apt-get install -y \
-#    build-essential \
-#    libffi-dev \
-#    libssl-dev \
-#    git \
-#    && rm -rf /var/lib/apt/lists/* \
+#安装系统依赖（aiohttp、pydantic、uvicorn 等可能需要编译支持）
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libffi-dev \
+    libssl-dev \
+    git \
+    && rm -rf /var/lib/apt/lists/* \
 
 
 WORKDIR /app

@@ -24,3 +24,8 @@ SESSIONS_DIR = "output/sessions"
 # 会话配置
 SESSION_TIMEOUT = int(os.getenv('SESSION_TIMEOUT', '3600'))  # 1小时
 MAX_CONCURRENT_SESSIONS = int(os.getenv('MAX_CONCURRENT_SESSIONS', '100'))
+
+# CAS配置
+CAS_SERVER_URL = os.getenv("CAS_SERVER_URL", "https://cas.example.com/cas/")
+CAS_SERVICE_URL = os.getenv("CAS_SERVICE_URL", "http://localhost:8000/cas/login")
+CAS_VERSION = int(os.getenv("CAS_VERSION", 3))

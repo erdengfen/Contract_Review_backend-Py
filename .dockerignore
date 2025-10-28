@@ -1,0 +1,40 @@
+# Python虚拟环境
+venv/
+mcp/
+.venv/
+
+# Python缓存文件
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 日志文件
+*.log
+logs/
+*.sqlite3
+
+# Git
+.git/
+.gitignore
+
+# IDE/编辑器相关
+.vscode/
+.idea/
+
+# Docker相关
+Dockerfile
+docker-compose.yml
+
+# 数据文件/临时文件
+*.tar
+*.tmp
+*.swp
+*.bak
+*.zip
+*.tar.gz
+
+# 项目构建输出
+dist/
+build/
+*.egg-info/

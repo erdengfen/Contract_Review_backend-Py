@@ -30,7 +30,8 @@ default_exclude_paths = [
     "/docs",
     "/static/**",
     "/api/user/create",
-    "/api/user/login"
+    "/api/user/login",
+    "/api/contract/upload"
 ]
 
 auth_scheme = HTTPBearer()
