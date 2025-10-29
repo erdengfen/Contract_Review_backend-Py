@@ -14,7 +14,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 class ServerConfig(BaseModel):
 
     host: str = Field("0.0.0.0", description="服务器主机地址")
-    port: int = Field(8081, description="服务器端口")
+    port: int = Field(8080, description="服务器端口")
     timeout: int = Field(60, description="请求超时时间（秒）")
     workers: int = Field(4, description="工作进程数")
 
@@ -27,7 +27,7 @@ class OpenAIConfig(BaseModel):
 
 class DatabaseConfig(BaseModel):
     host: str = Field("localhost", description="数据库主机地址")
-    port: int = Field(27017, description="数据库端口")
+    port: int = Field(3306, description="数据库端口")
     name: str = Field("contract_review", description="数据库名称")
     username: str = Field("admin", description="数据库用户名")
     password: str = Field("admin123", description="数据库密码")
@@ -63,6 +63,9 @@ class LoggingConfig(BaseModel):
     log_level: str = Field("INFO", description="日志级别")
     backup_days: int = Field(30, description="日志备份天数")
     encoding: str = Field("utf-8", description="日志编码")
+
+class CASConfig(BaseModel):
+    service_url: str = Field(f"http//")
 
 class Config(BaseModel):
     APP_NAME: str = Field("合同审阅系统API", description="应用名称")
