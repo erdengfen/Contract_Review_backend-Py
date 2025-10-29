@@ -12,11 +12,10 @@ from datetime import datetime
 from sqlalchemy.orm import Session as DBSession
 
 from app.config.config import settings
+from app.core.global_init import llm_manager
 from app.models.contract import ContractFile
-from app.models.user import User
 from app.schemas.contract_file import UploadResponse
 from app.utils.contract_parser import ContractParser
-from app.core.llm import llm
 
 from urllib.parse import quote
 
@@ -46,6 +45,7 @@ class CRUDContract:
         db.refresh(new_file)
 
         #调用llm解析合同金额，甲乙方
+        llm = await llm_manager.get_user_llm(user_id=user_id, db_session=db)
         parsed_data = await ContractParser.extract_parties_with_llm(save_path, llm)
 
         #将信息保存至数据库

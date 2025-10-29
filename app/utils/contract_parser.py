@@ -7,12 +7,8 @@ from pdf2image import convert_from_path
 import pytesseract
 import json
 import os
-from app.core.llm import init_llm
 
 class ContractParser:
-
-    def __init__(self):
-        self.llm = init_llm()
 
     @staticmethod
     async def read_docx_text(file_path: str) -> str:

@@ -7,8 +7,12 @@ from typing import Dict, List, Any
 from datetime import datetime
 from pathlib import Path
 
+from fastapi.params import Depends
 from langchain_core.messages import SystemMessage, HumanMessage
-from ..core.llm import init_llm
+
+from ..core.dependencies import get_db
+from ..core.global_init import llm_manager
+from ..models import Session
 from ..utils.mcp_client import MCPClient
 from ..utils.content_slicer import split_text_by_length
 
@@ -18,11 +22,10 @@ class ContractReviewService:
     """合同审阅服务"""
     #初始化函数
     def __init__(self, mcp_client: MCPClient):
-        self.llm = init_llm()
         self.mcp_client = mcp_client
     
-    async def review_contract(self, chunk_text: str, stance: str = "甲方", intensity: str = "标准", 
-                            context: str = "") -> List[Dict[str, Any]]:
+    async def review_contract(self, user_id: int ,chunk_text: str, stance: str = "甲方", intensity: str = "标准",
+                            context: str = "", db:Session = Depends(get_db)) -> List[Dict[str, Any]]:
         """执行合同审阅"""
         try:
             # 构建审阅提示词
@@ -89,7 +92,8 @@ class ContractReviewService:
             ]
 
             # 调用模型并解析结果
-            response = self.llm.invoke(messages)
+            llm = await llm_manager.get_user_llm(user_id=user_id, db_session=db)
+            response = llm.invoke(messages)
             review_result = response.content
             modifications = self._parse_review_result(review_result)
 

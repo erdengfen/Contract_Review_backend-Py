@@ -394,7 +394,7 @@ async def execute_review_task(
                     context = f"这是第 {idx + 1} 个分块，前面已审阅 {idx} 个分块。"
                 
                 # 执行审阅
-                modifications = await contract_review_service.review_contract(
+                modifications = await contract_review_service.review_contract(user_id,
                     chunk_content, stance, "", context
                 )
                 
