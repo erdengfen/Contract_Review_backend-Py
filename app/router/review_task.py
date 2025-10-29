@@ -43,8 +43,6 @@ async def create_review_task(
     request: ReviewTaskCreateRequest,
     current_user: User = Depends(get_current_user),
     current_session: DBSession = Depends(get_db),
-
-
     db: DBSession = Depends(get_db)
 ):
     """创建审阅任务"""
@@ -55,7 +53,7 @@ async def create_review_task(
             raise HTTPException(status_code=404, detail="合同文件不存在")
         
         # 创建审阅任务
-        review_task = CRUDReviewTask.create_review_task(db, current_user.id, request)
+        review_task =  CRUDReviewTask.create_review_task(db, current_user.id, request)
         
         log_module.info(f"用户 {current_user.id} 创建审阅任务 {review_task.id}")
         
