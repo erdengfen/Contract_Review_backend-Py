@@ -10,7 +10,7 @@ from pathlib import Path
 from langchain_core.messages import SystemMessage, HumanMessage
 from ..core.llm import init_llm
 from ..utils.mcp_client import MCPClient
-from ..utils.content_slicer import split_text_by_length
+#from ..utils.content_slicer import split_text_by_length
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +20,17 @@ class ContractReviewService:
     def __init__(self, mcp_client: MCPClient):
         self.llm = init_llm()
         self.mcp_client = mcp_client
+    
+    # def detect_stance(self, text: str) -> str:
+    #     """简单识别合同立场：统计'甲方'与'乙方'出现次数，默认'甲方'"""
+    #     try:
+    #         a = text.count("甲方")
+    #         b = text.count("乙方")
+    #         if b > a:
+    #             return "乙方"
+    #         return "甲方"
+    #     except Exception:
+    #         return "甲方"
     
     async def review_contract(self, chunk_text: str, stance: str = "甲方", intensity: str = "标准", 
                             context: str = "") -> List[Dict[str, Any]]:

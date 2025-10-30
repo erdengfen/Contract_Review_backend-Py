@@ -13,8 +13,9 @@ server:
   workers: 4
 
 openai_config:
+  provider: "deepseek"
   api_key: "sk-1234567890abcdef1234567890abcdef"
-  model: "gpt-3.5-turbo"
+  model: "deepseek-chat"
 
 database:
   host: 117.72.56.2
