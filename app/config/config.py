@@ -20,8 +20,9 @@ class ServerConfig(BaseModel):
 
 
 class OpenAIConfig(BaseModel):
-    api_key: str = Field(..., description="OpenAI API密钥")
-    model: str = Field("gpt-3.5-turbo", description="OpenAI模型名称")
+    provider: str = Field("deepseek", description="LLM提供者，如 deepseek/openai")
+    api_key: str = Field(..., description="LLM API密钥")
+    model: str = Field("deepseek-chat", description="模型名称")
 
 
 
