@@ -2,7 +2,6 @@
 LLM初始化模块
 """
 from langchain.chat_models import init_chat_model
-from .config import DEEPSEEK_API_KEY
 
 def init_llm(api_key: str, model: str, base_url: str = None, model_provider: str = "deepseek"):
     """

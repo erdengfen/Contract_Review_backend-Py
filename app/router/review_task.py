@@ -6,8 +6,11 @@
 @Date    ：2025/10/22 14:13 
 """
 import logging
+import asyncio
+import json
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from sse_starlette.sse import EventSourceResponse
 from sqlalchemy.orm import Session as DBSession
 
 from app.middlewares.auth import get_current_user
@@ -15,10 +18,10 @@ from app.schemas.base import GenericResponse
 from app.schemas.review_task import (
     ReviewTaskCreateRequest, 
     ReviewTaskResponse, 
-    ReviewResultResponse,
-    RiskItemResponse,
+    # ReviewResultResponse,
+    # RiskItemResponse,
     ReviewTaskListResponse,
-    ReviewProgressResponse
+    # ReviewProgressResponse
 )
 from app.curd.review_task import CRUDReviewTask
 from app.curd.contract_file import CRUDContract
@@ -38,14 +41,15 @@ router = APIRouter(tags=["合同审阅"])
 # 全局变量存储审阅进度
 review_progress = {}
 
+# 全局队列：按任务ID存储审阅流结果（每个chunk完成即推送）
+stream_queues: dict[int, asyncio.Queue] = {}
+
 
 @router.post("/create", response_model=GenericResponse[ReviewTaskResponse])
 async def create_review_task(
     request: ReviewTaskCreateRequest,
     current_user: User = Depends(get_current_user),
     current_session: DBSession = Depends(get_db),
-
-
     db: DBSession = Depends(get_db)
 ):
     """创建审阅任务"""
@@ -56,7 +60,7 @@ async def create_review_task(
             raise HTTPException(status_code=404, detail="合同文件不存在")
         
         # 创建审阅任务
-        review_task = CRUDReviewTask.create_review_task(db, current_user.id, request)
+        review_task =  CRUDReviewTask.create_review_task(db, current_user.id, request)
         
         logger.info(f"用户 {current_user.id} 创建审阅任务 {review_task.id}")
         
@@ -113,6 +117,8 @@ async def start_review_task(
             "status": "processing",
             "message": "正在准备审阅..."
         }
+        # 初始化结果流队列（若已存在则重置）
+        stream_queues[task_id] = asyncio.Queue()
         
         # 在后台执行审阅任务
         background_tasks.add_task(
@@ -140,122 +146,190 @@ async def start_review_task(
         raise HTTPException(status_code=500, detail=f"开始审阅任务失败: {str(e)}")
 
 
-@router.get("/progress/{task_id}", response_model=GenericResponse[ReviewProgressResponse])
-async def get_review_progress(
-    task_id: int,
-    current_user: User = Depends(get_current_user),
-    db: DBSession = Depends(get_db)
-):
-    """获取审阅进度"""
-    try:
-        # 验证任务权限
-        review_task = CRUDReviewTask.get_review_task(db, task_id)
-        if not review_task:
-            raise HTTPException(status_code=404, detail="审阅任务不存在")
-        
-        if review_task.user_id != current_user.id:
-            raise HTTPException(status_code=403, detail="无权限访问此任务")
-        
-        # 获取进度信息
-        progress = review_progress.get(task_id, {
-            "current_chunk": 0,
-            "total_chunks": 0,
-            "status": "unknown",
-            "message": "未知状态"
-        })
-        
-        percentage = 0
-        if progress["total_chunks"] > 0:
-            percentage = round((progress["current_chunk"] / progress["total_chunks"]) * 100, 1)
-        
-        return GenericResponse(
-            code=200,
-            msg="获取进度成功",
-            data=ReviewProgressResponse(
-                task_id=task_id,
-                current_chunk=progress["current_chunk"],
-                total_chunks=progress["total_chunks"],
-                percentage=percentage,
-                status=progress["status"],
-                message=progress["message"]
-            )
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"获取审阅进度失败: {e}")
-        raise HTTPException(status_code=500, detail=f"获取审阅进度失败: {str(e)}")
+# @router.get("/progress/{task_id}", response_model=GenericResponse[ReviewProgressResponse])
+# async def get_review_progress(
+#     task_id: int,
+#     current_user: User = Depends(get_current_user),
+#     db: DBSession = Depends(get_db)
+# ):
+#     """获取审阅进度"""
+#     try:
+#         # 验证任务权限
+#         review_task = CRUDReviewTask.get_review_task(db, task_id)
+#         if not review_task:
+#             raise HTTPException(status_code=404, detail="审阅任务不存在")
+#
+#         if review_task.user_id != current_user.id:
+#             raise HTTPException(status_code=403, detail="无权限访问此任务")
+#
+#         # 获取进度信息
+#         progress = review_progress.get(task_id, {
+#             "current_chunk": 0,
+#             "total_chunks": 0,
+#             "status": "unknown",
+#             "message": "未知状态"
+#         })
+#
+#         percentage = 0
+#         if progress["total_chunks"] > 0:
+#             percentage = round((progress["current_chunk"] / progress["total_chunks"]) * 100, 1)
+#
+#         return GenericResponse(
+#             code=200,
+#             msg="获取进度成功",
+#             data=ReviewProgressResponse(
+#                 task_id=task_id,
+#                 current_chunk=progress["current_chunk"],
+#                 total_chunks=progress["total_chunks"],
+#                 percentage=percentage,
+#                 status=progress["status"],
+#                 message=progress["message"]
+#             )
+#         )
+#
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         logger.error(f"获取审阅进度失败: {e}")
+#         raise HTTPException(status_code=500, detail=f"获取审阅进度失败: {str(e)}")
 
 
-@router.get("/result/{task_id}", response_model=GenericResponse[dict])
+@router.get("/result/{task_id}")
 async def get_review_result(
     task_id: int,
     current_user: User = Depends(get_current_user),
     db: DBSession = Depends(get_db)
 ):
-    """获取审阅结果"""
-    try:
-        # 验证任务权限
-        review_task = CRUDReviewTask.get_review_task(db, task_id)
-        if not review_task:
-            raise HTTPException(status_code=404, detail="审阅任务不存在")
-        
-        if review_task.user_id != current_user.id:
-            raise HTTPException(status_code=403, detail="无权限访问此任务")
-        
-        if review_task.status != "completed":
-            raise HTTPException(status_code=400, detail="审阅任务尚未完成")
-        
-        # 获取审阅结果
-        review_result = CRUDReviewTask.get_review_result(db, task_id)
-        if not review_result:
-            raise HTTPException(status_code=404, detail="审阅结果不存在")
-        
-        # 获取风险项列表
-        risk_items = CRUDReviewTask.get_risk_items(db, review_result.id)
-        
-        return GenericResponse(
-            code=200,
-            msg="获取审阅结果成功",
-            data={
-                "task": ReviewTaskResponse(
-                    id=review_task.id,
-                    contract_id=review_task.contract_id,
-                    user_id=review_task.user_id,
-                    stance=review_task.stance,
-                    intensity=review_task.intensity,
-                    description=review_task.description,
-                    status=review_task.status,
-                    created_at=review_task.created_at,
-                    completed_at=review_task.completed_at
-                ),
-                "result": ReviewResultResponse(
-                    id=review_result.id,
-                    task_id=review_result.task_id,
-                    overall_risk=review_result.overall_risk,
-                    summary=review_result.summary,
-                    suggestion=review_result.suggestion,
-                    created_at=review_result.created_at
-                ),
-                "risk_items": [
-                    RiskItemResponse(
-                        id=item.id,
-                        result_id=item.result_id,
-                        clause_text=item.clause_text,
-                        risk_type=item.risk_type,
-                        risk_level=item.risk_level,
-                        suggestion=item.suggestion
-                    ) for item in risk_items
-                ]
-            }
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"获取审阅结果失败: {e}")
-        raise HTTPException(status_code=500, detail=f"获取审阅结果失败: {str(e)}")
+    """流式返回审阅结果（按chunk）"""
+    # 权限校验
+    review_task = CRUDReviewTask.get_review_task(db, task_id)
+    if not review_task:
+        raise HTTPException(status_code=404, detail="审阅任务不存在")
+    if review_task.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="无权限访问此任务")
+
+    async def event_generator():
+        # 若没有队列，尝试创建空队列防止404，但提示状态
+        q = stream_queues.get(task_id)
+        last_progress = {"current": 0, "total": 0}
+
+        while True:
+            try:
+                if q is None:
+                    # 任务可能已完成，返回最终快照并结束
+                    review_result = CRUDReviewTask.get_review_result(db, task_id)
+                    if review_result:
+                        risk_items = CRUDReviewTask.get_risk_items(db, review_result.id)
+                        payload = {
+                            "type": "final_snapshot",
+                            "task": {
+                                "id": review_task.id,
+                                "status": review_task.status,
+                            },
+                            "result": {
+                                "overall_risk": review_result.overall_risk,
+                                "summary": review_result.summary,
+                                "suggestion": review_result.suggestion,
+                            },
+                            "risk_items": [
+                                {
+                                    "id": item.id,
+                                    "clause_text": item.clause_text,
+                                    "risk_type": item.risk_type,
+                                    "risk_level": item.risk_level,
+                                    "suggestion": item.suggestion,
+                                } for item in risk_items
+                            ]
+                        }
+                        yield {
+                            "event": "message",
+                            "data": json.dumps(payload, ensure_ascii=False)
+                        }
+                    break
+
+                # 等待队列事件
+                item = await asyncio.wait_for(q.get(), timeout=1.0)
+                if item.get("type") == "chunk_result":
+                    yield {
+                        "event": "message",
+                        "data": json.dumps(item, ensure_ascii=False)
+                    }
+                elif item.get("type") == "completed":
+                    yield {
+                        "event": "message",
+                        "data": json.dumps({"type": "completed"}, ensure_ascii=False)
+                    }
+                    break
+                elif item.get("type") == "failed":
+                    yield {
+                        "event": "message",
+                        "data": json.dumps({"type": "failed", "error": item.get("error")}, ensure_ascii=False)
+                    }
+                    break
+            except asyncio.TimeoutError:
+                # 可选：同步一次进度作为心跳
+                prog = review_progress.get(task_id)
+                if prog and (prog["current_chunk"] != last_progress["current"] or prog["total_chunks"] != last_progress["total"]):
+                    last_progress = {"current": prog["current_chunk"], "total": prog["total_chunks"]}
+                    pct = 0
+                    if prog["total_chunks"]:
+                        pct = round(prog["current_chunk"] / prog["total_chunks"] * 100, 1)
+                    yield {
+                        "event": "message",
+                        "data": json.dumps({
+                            "type": "progress",
+                            "current_chunk": prog["current_chunk"],
+                            "total_chunks": prog["total_chunks"],
+                            "percentage": pct,
+                            "status": prog.get("status")
+                        }, ensure_ascii=False)
+                    }
+                await asyncio.sleep(0.1)
+
+    return EventSourceResponse(event_generator())
+
+
+@router.get("/progress/{task_id}")
+async def stream_review_progress(
+    task_id: int,
+    current_user: User = Depends(get_current_user),
+    db: DBSession = Depends(get_db)
+):
+    """SSE流：每个chunk完成时推送最新进度"""
+    review_task = CRUDReviewTask.get_review_task(db, task_id)
+    if not review_task:
+        raise HTTPException(status_code=404, detail="审阅任务不存在")
+    if review_task.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="无权限访问此任务")
+
+    async def progress_events():
+        last = {"c": -1, "t": -1}
+        while True:
+            prog = review_progress.get(task_id)
+            if not prog:
+                await asyncio.sleep(0.2)
+                continue
+            if prog["current_chunk"] != last["c"] or prog["total_chunks"] != last["t"]:
+                last = {"c": prog["current_chunk"], "t": prog["total_chunks"]}
+                pct = 0
+                if prog["total_chunks"]:
+                    pct = round(prog["current_chunk"] / prog["total_chunks"] * 100, 1)
+                yield {
+                    "event": "message",
+                    "data": json.dumps({
+                        "type": "progress",
+                        "current_chunk": prog["current_chunk"],
+                        "total_chunks": prog["total_chunks"],
+                        "percentage": pct,
+                        "status": prog.get("status"),
+                        "message": prog.get("message")
+                    }, ensure_ascii=False)
+                }
+            if prog.get("status") in ("completed", "failed"):
+                break
+            await asyncio.sleep(0.3)
+
+    return EventSourceResponse(progress_events())
 
 
 @router.get("/list", response_model=GenericResponse[ReviewTaskListResponse])
@@ -374,7 +448,7 @@ async def execute_review_task(
             contract_content = await mcp_client.extract_pdf_document_content(contract.file_path)
         else:
             contract_content = await mcp_client.extract_document_content(contract.file_path)
-        
+
         # 分割合同内容
         chunks = split_text_by_length(contract_content, max_length=4000)
         review_progress[task_id]["total_chunks"] = len(chunks)
@@ -399,6 +473,24 @@ async def execute_review_task(
                 )
                 
                 all_modifications.extend(modifications)
+                # 将本chunk结果推送到流队列
+                try:
+                    q = stream_queues.get(task_id)
+                    if q is not None:
+                        pct = 0
+                        if review_progress[task_id]["total_chunks"]:
+                            pct = round(
+                                review_progress[task_id]["current_chunk"] / review_progress[task_id]["total_chunks"] * 100, 1
+                            )
+                        await q.put({
+                            "type": "chunk_result",
+                            "chunk_index": idx + 1,
+                            "total_chunks": len(chunks),
+                            "percentage": pct,
+                            "modifications": modifications,
+                        })
+                except Exception as _:
+                    pass
                 
                 logger.info(f"任务 {task_id} 第 {idx + 1} 个分块审阅完成，发现 {len(modifications)} 个修改点")
                 
@@ -442,6 +534,14 @@ async def execute_review_task(
         # 更新进度
         review_progress[task_id]["status"] = "completed"
         review_progress[task_id]["message"] = f"审阅完成，共发现 {len(all_modifications)} 个风险点"
+
+        # 通知完成
+        try:
+            q = stream_queues.get(task_id)
+            if q is not None:
+                await q.put({"type": "completed"})
+        except Exception:
+            pass
         
         logger.info(f"审阅任务 {task_id} 执行完成")
         
@@ -452,6 +552,13 @@ async def execute_review_task(
         
         # 更新任务状态为失败
         CRUDReviewTask.update_task_status(db, task_id, "failed")
+        # 通知失败
+        try:
+            q = stream_queues.get(task_id)
+            if q is not None:
+                await q.put({"type": "failed", "error": str(e)})
+        except Exception:
+            pass
         
     finally:
         db.close()

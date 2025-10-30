@@ -16,24 +16,25 @@ server:
   workers: 4
 
 openai_config:
+  provider: "deepseek"
   api_key: "sk-1234567890abcdef1234567890abcdef"
-  model: "gpt-3.5-turbo"
+  model: "deepseek-chat"
 
 database:
-  host: 117.72.56.2
+  host: 127.0.0.1
   port: 3306
   name: "contract_review"
   username: root
-  password: chongqinglingdong123456
+  password: "123456"
   pool_size: 10
   pool_timeout: 30
 
 
 redis_config:
-  host: 117.72.56.2
+  host: 127.0.0.1
   port: 6379
   db: 10
-  password: chongqinglingdong123456
+#  password: chongqinglingdong123456
   decode_responses: True
   max_connections: 20
   socket_connect_timeout: 5

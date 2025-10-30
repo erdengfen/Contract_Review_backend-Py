@@ -11,13 +11,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 
 from app.core.config import APP_NAME, APP_VERSION
-# from app.api.routes import router, init_services  # 已废弃
 from app.config.config import settings
 from app.core.global_init import llm_manager, redis_handler
 
 from app.middlewares.auth import verify_token
 from fastapi.responses import FileResponse
-from app.router import user, contract, review_task, chat_session, llm_config
+from app.router import user, contract, review_task, chat_session, llm_config, cas_auth
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -79,6 +78,7 @@ app.include_router(chat_session.router, prefix="/api/chat_session", tags=["会�
 app.include_router(contract.router, prefix="/api/contract", tags=["文件上传下载"])
 app.include_router(review_task.router, prefix="/api/review_task", tags=["合同审阅"])
 app.include_router(llm_config.router, prefix="/api/llm_config", tags=["llm管理"])
+app.include_router(cas_auth.router, tags=["CAS认证"])
 
 
 

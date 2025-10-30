@@ -14,7 +14,7 @@ from ..core.dependencies import get_db
 from ..core.global_init import llm_manager
 from ..models import Session
 from ..utils.mcp_client import MCPClient
-from ..utils.content_slicer import split_text_by_length
+#from ..utils.content_slicer import split_text_by_length
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class ContractReviewService:
     #初始化函数
     def __init__(self, mcp_client: MCPClient):
         self.mcp_client = mcp_client
-    
+
     async def review_contract(self, user_id: int ,chunk_text: str, stance: str = "甲方", intensity: str = "标准",
                             context: str = "", db:Session = Depends(get_db)) -> List[Dict[str, Any]]:
         """执行合同审阅"""
