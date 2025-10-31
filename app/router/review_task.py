@@ -10,6 +10,7 @@ import asyncio
 import json
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from openai import BaseModel
 from sse_starlette.sse import EventSourceResponse
 from sqlalchemy.orm import Session as DBSession
 
@@ -28,6 +29,7 @@ from app.curd.contract_file import CRUDContract
 from app.core.dependencies import get_db
 from app.models.user import User
 from app.services.contract_review import ContractReviewService
+from app.utils.document_parsing import docx2md, mk_pdf2docx
 from app.utils.mcp_client import MCPClient
 from app.utils.content_slicer import split_text_by_length
 
@@ -44,47 +46,6 @@ review_progress = {}
 # 全局队列：按任务ID存储审阅流结果（每个chunk完成即推送）
 stream_queues: dict[int, asyncio.Queue] = {}
 
-
-@router.post("/create", response_model=GenericResponse[ReviewTaskResponse])
-async def create_review_task(
-    request: ReviewTaskCreateRequest,
-    current_user: User = Depends(get_current_user),
-    current_session: DBSession = Depends(get_db),
-    db: DBSession = Depends(get_db)
-):
-    """创建审阅任务"""
-    try:
-        # 验证合同文件是否存在
-        contract = await CRUDContract.get_contract_file(db, request.contract_id)
-        if not contract:
-            raise HTTPException(status_code=404, detail="合同文件不存在")
-        
-        # 创建审阅任务
-        review_task =  CRUDReviewTask.create_review_task(db, current_user.id, request)
-        
-        logger.info(f"用户 {current_user.id} 创建审阅任务 {review_task.id}")
-        
-        return GenericResponse(
-            code=200,
-            msg="审阅任务创建成功",
-            data=ReviewTaskResponse(
-                id=review_task.id,
-                contract_id=review_task.contract_id,
-                user_id=review_task.user_id,
-                stance=review_task.stance,
-                intensity=review_task.intensity,
-                description=review_task.description,
-                status=review_task.status,
-                created_at=review_task.created_at,
-                completed_at=review_task.completed_at
-            )
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"创建审阅任务失败: {e}")
-        raise HTTPException(status_code=500, detail=f"创建审阅任务失败: {str(e)}")
 
 
 @router.post("/start/{task_id}", response_model=GenericResponse[dict])
@@ -144,54 +105,6 @@ async def start_review_task(
     except Exception as e:
         logger.error(f"开始审阅任务失败: {e}")
         raise HTTPException(status_code=500, detail=f"开始审阅任务失败: {str(e)}")
-
-
-# @router.get("/progress/{task_id}", response_model=GenericResponse[ReviewProgressResponse])
-# async def get_review_progress(
-#     task_id: int,
-#     current_user: User = Depends(get_current_user),
-#     db: DBSession = Depends(get_db)
-# ):
-#     """获取审阅进度"""
-#     try:
-#         # 验证任务权限
-#         review_task = CRUDReviewTask.get_review_task(db, task_id)
-#         if not review_task:
-#             raise HTTPException(status_code=404, detail="审阅任务不存在")
-#
-#         if review_task.user_id != current_user.id:
-#             raise HTTPException(status_code=403, detail="无权限访问此任务")
-#
-#         # 获取进度信息
-#         progress = review_progress.get(task_id, {
-#             "current_chunk": 0,
-#             "total_chunks": 0,
-#             "status": "unknown",
-#             "message": "未知状态"
-#         })
-#
-#         percentage = 0
-#         if progress["total_chunks"] > 0:
-#             percentage = round((progress["current_chunk"] / progress["total_chunks"]) * 100, 1)
-#
-#         return GenericResponse(
-#             code=200,
-#             msg="获取进度成功",
-#             data=ReviewProgressResponse(
-#                 task_id=task_id,
-#                 current_chunk=progress["current_chunk"],
-#                 total_chunks=progress["total_chunks"],
-#                 percentage=percentage,
-#                 status=progress["status"],
-#                 message=progress["message"]
-#             )
-#         )
-#
-#     except HTTPException:
-#         raise
-#     except Exception as e:
-#         logger.error(f"获取审阅进度失败: {e}")
-#         raise HTTPException(status_code=500, detail=f"获取审阅进度失败: {str(e)}")
 
 
 @router.get("/result/{task_id}")
@@ -330,6 +243,117 @@ async def stream_review_progress(
             await asyncio.sleep(0.3)
 
     return EventSourceResponse(progress_events())
+
+
+# --------------------
+
+
+@router.post(
+        "/create",
+        summary="创建审阅任务",
+        response_model=GenericResponse[ReviewTaskResponse]
+)
+async def create_review(
+        request: ReviewTaskCreateRequest,
+        current_user: User = Depends(get_current_user),
+        db: DBSession = Depends(get_db)
+) -> GenericResponse[ReviewTaskResponse]:
+    """创建审阅任务"""
+    try:
+        # 创建会话
+
+        review_task = CRUDReviewTask.create_review_task(db, current_user.id, request)
+        return GenericResponse(
+            code=200,
+            msg="审阅任务创建成功",
+            data=ReviewTaskResponse(
+                id=review_task.id,
+                contract_id=review_task.contract_id,
+                session_id=review_task.session_id,
+                user_id=review_task.user_id,
+                stance=review_task.stance,
+                intensity=review_task.intensity,
+                description=review_task.description,
+                status=review_task.status,
+                created_at=review_task.created_at,
+                completed_at=review_task.completed_at
+            )
+        )
+    except Exception as e:
+        logger.error(f"创建审阅任务失败: {e}")
+        raise HTTPException(status_code=500, detail=f"创建审阅任务失败: {str(e)}")
+
+class StartReviewTaskRequest(BaseModel):
+    task_id: str
+
+@router.post("/start_task",summary="启动审阅任务")
+async def start_task(
+        request: StartReviewTaskRequest,
+        current_user: User = Depends(get_current_user),
+        db: DBSession = Depends(get_db)
+):
+    """启动审阅任务"""
+    async def event_generator():
+            review_task = CRUDReviewTask.get_review_user_task(
+                db,
+                current_user.id,
+                request.task_id)
+            if not review_task:
+                yield {
+                    "event": "message",
+                    "data": json.dumps({
+                        "type": "error",
+                        "message": "任务不存在"
+                    }, ensure_ascii=False)
+                }
+            CRUDReviewTask.update_task_status(db, review_task.id, "processing")
+            contract = await CRUDContract.get_contract_file(db, review_task.contract_id)
+            mcp_client = MCPClient()
+            await mcp_client.initialize()
+            contract_review_service = ContractReviewService(mcp_client)
+            """
+            原始文本提取（有问题需更改）
+                file_ext = contract.file_path.split('.')[-1].lower()
+                if file_ext == 'pdf':
+                    contract_content = await mcp_client.extract_pdf_document_content(contract.file_path)
+                else:
+                    contract_content = await mcp_client.extract_document_content(contract.file_path)
+            """
+            if contract.file_path.split('.')[-1].lower()=="pdf":
+                contract_content=docx2md(mk_pdf2docx(contract.file_path,contract.file_path.replace('.pdf','.docx')),None)
+            else:
+                contract_content = docx2md(contract.file_path,None)
+            # 分割合同内容
+            chunks = split_text_by_length(contract_content, max_length=4000)
+            all_modifications = []
+            for idx, chunk_content in enumerate(chunks):
+                try:
+
+                    # 构建审阅上下文
+                    context = ""
+                    if idx > 0:
+                        context = f"这是第 {idx + 1} 个分块，前面已审阅 {idx} 个分块。"
+                    # 执行审阅
+                    modifications = await contract_review_service.review_contract(
+                        chunk_content, review_task.stance, "", context
+                    )
+                    yield {
+                        "event": "message",
+                        "data": json.dumps({
+                            "type": "chunk_result",
+                            "chunk_index": idx + 1,
+                            "total_chunks": len(chunks),
+                            "modifications": modifications,
+                        }, ensure_ascii=False)
+                    }
+                    logger.info(f"任务 {review_task.id} 第 {idx + 1} 个分块审阅完成，发现 {len(modifications)} 个修改点")
+                except Exception as e:
+                    logger.error(f"任务 {review_task.id} 第 {idx + 1} 个分块审阅失败: {e}")
+                    continue
+    return  EventSourceResponse(
+        event_generator()
+    )
+
 
 
 @router.get("/list", response_model=GenericResponse[ReviewTaskListResponse])

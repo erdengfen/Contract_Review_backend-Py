@@ -24,7 +24,7 @@ class CRUDContract:
     @staticmethod
     async def create_contract_file(db: DBSession, user_id: int, file) -> UploadResponse:
         """上传并保存合同文件"""
-        file_type = file.filename.split(".")[-1]
+        file_type = file.filename.rsplit(".")[-1]
         save_dir = os.path.join(settings.UPLOAD_DIR, str(user_id))
         os.makedirs(save_dir, exist_ok=True)
 

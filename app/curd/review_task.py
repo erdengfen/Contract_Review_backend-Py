@@ -19,8 +19,8 @@ class CRUDReviewTask:
 
     @staticmethod
     def create_review_task(
-        db: DBSession, 
-        user_id: int, 
+        db: DBSession,
+        user_id: int,
         request: ReviewTaskCreateRequest
     ) -> ReviewTask:
         """创建审阅任务"""
@@ -42,6 +42,13 @@ class CRUDReviewTask:
     def get_review_task(db: DBSession, task_id: int) -> Optional[ReviewTask]:
         """根据任务ID获取审阅任务"""
         return db.query(ReviewTask).filter(ReviewTask.id == task_id).first()
+    @staticmethod
+    def get_review_user_task(db: DBSession, user_id: int,task_id: int) -> Optional[ReviewTask]:
+        """根据用户ID获取用户发起的审阅任务"""
+        return db.query(ReviewTask).filter(
+            ReviewTask.user_id == user_id,
+            ReviewTask.id == task_id
+        ).first()
 
     @staticmethod
     def get_user_review_tasks(
