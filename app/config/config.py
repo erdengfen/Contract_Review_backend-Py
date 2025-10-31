@@ -80,8 +80,7 @@ class LoggingConfig(BaseModel):
 class MCPConfig(BaseModel):
     url: str = Field(..., description="MCP服务器URL")
 
-class CASConfig(BaseModel):
-    service_url: str = Field(f"http//")
+
 
 class Config(BaseModel):
     APP_NAME: str = Field("合同审阅系统API", description="应用名称")

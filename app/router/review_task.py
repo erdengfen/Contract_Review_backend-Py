@@ -24,7 +24,7 @@ from app.schemas.review_task import (
     ReviewTaskListResponse,
     # ReviewProgressResponse
 )
-from app.curd.review_task import CRUDReviewTask
+from app.curd.review_task import CRUDReviewTask, CRUDReviewResult
 from app.curd.contract_file import CRUDContract
 from app.core.dependencies import get_db
 from app.models.user import User
@@ -319,10 +319,9 @@ async def start_task(
                 else:
                     contract_content = await mcp_client.extract_document_content(contract.file_path)
             """
-            if contract.file_path.split('.')[-1].lower()=="pdf":
-                contract_content=docx2md(mk_pdf2docx(contract.file_path,contract.file_path.replace('.pdf','.docx')),None)
-            else:
-                contract_content = docx2md(contract.file_path,None)
+            # 文件内容提取在上传接口，这里直接从数据库获取
+            contract_content=contract.contract_content
+
             # 分割合同内容
             chunks = split_text_by_length(contract_content, max_length=4000)
             all_modifications = []
@@ -337,15 +336,22 @@ async def start_task(
                     modifications = await contract_review_service.review_contract(
                         chunk_content, review_task.stance, "", context
                     )
-                    yield {
-                        "event": "message",
-                        "data": json.dumps({
-                            "type": "chunk_result",
-                            "chunk_index": idx + 1,
-                            "total_chunks": len(chunks),
-                            "modifications": modifications,
-                        }, ensure_ascii=False)
-                    }
+                    for j, modification in enumerate(modifications):
+                        ind=idx+j+1
+                        review_result=CRUDReviewResult.create_review_result(
+                            db=db,
+                            session_id=review_task.session_id,
+                            task_id=review_task.id,
+                            index=ind,
+                            original_content=chunk_content,
+                            risk_analysis=modification["risk_analysis"],
+                            risk_level=modification["risk_level"],
+                            suggested_content=modification["suggested_content"]
+                        )
+                        yield {
+                            "event": "message",
+                            "data": json.dumps(review_result.dict(), ensure_ascii=False)
+                        }
                     logger.info(f"任务 {review_task.id} 第 {idx + 1} 个分块审阅完成，发现 {len(modifications)} 个修改点")
                 except Exception as e:
                     logger.error(f"任务 {review_task.id} 第 {idx + 1} 个分块审阅失败: {e}")

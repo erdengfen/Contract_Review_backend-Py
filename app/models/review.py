@@ -24,7 +24,7 @@ class ReviewTask(Base):
     stance = Column(String(32),comment="审查立场")
     intensity = Column(String(32),comment="审查尺度")
     description = Column(Text,comment="审查需求描述")
-    status = Column(String(32),comment="状态")
+    status = Column(String(32),comment="状态: pending:待处理, completed:已完成, failed:处理失败")
     created_at = Column(TIMESTAMP, default=datetime.now, comment="创建时间")
     completed_at = Column(TIMESTAMP, default=datetime.now, comment="完成时间")
 
@@ -37,22 +37,25 @@ class ReviewResult(Base):
     id = Column(Integer, primary_key=True,comment="结果ID")
     session_id = Column(Integer,comment="会话ID")
     task_id = Column(Integer,comment="任务ID")
-    overall_risk = Column(String(16),comment="Overall Risk")
-    summary = Column(Text,comment="Summary")
-    suggestion = Column(Text,comment="Suggestion")
+    index = Column(Integer,comment="结果索引")
+    original_content = Column(Text,comment="原始文本")
+    risk_analysis = Column(Text,comment="风险分析")
+    risk_level = Column(String(16),comment="风险等级")
+    suggested_content = Column(Text,comment="建议内容")
+    is_accepted = Column(Integer, default=0, comment="是否接受建议")
     created_at = Column(TIMESTAMP, default=datetime.now, comment="创建时间")
 
-class RiskItem(Base):
-    """
-    风险项表
-    """
-    __tablename__ = "risk_item"
-
-    id = Column(Integer, primary_key=True,comment="风险项ID")
-    result_id = Column(Integer,comment="结果ID")
-    clause_text = Column(Text,comment="条款内容")
-    risk_type = Column(String(64),comment="风险类型")
-    risk_level = Column(String(16),comment="风险等级")
-    suggestion = Column(Text,comment="建议")
-
+    def dict(self):
+        return {
+            "id": self.id,
+            "session_id": self.session_id,
+            "task_id": self.task_id,
+            "index": self.index,
+            "original_content": self.original_content,
+            "risk_analysis": self.risk_analysis,
+            "risk_level": self.risk_level,
+            "suggested_content": self.suggested_content,
+            "is_accepted": self.is_accepted,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
 

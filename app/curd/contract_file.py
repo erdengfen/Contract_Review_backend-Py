@@ -8,35 +8,51 @@
 import os
 import shutil
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy.orm import Session as DBSession
 
 from app.config.config import settings
 from app.models.contract import ContractFile
+from app.models.contract_type import ContractType
 from app.models.user import User
 from app.schemas.contract_file import UploadResponse
 
 
 from urllib.parse import quote
 
+class CRUDContractType:
+    """合同类型CRUD操作"""
+    @staticmethod
+    def get_contract_type(db: DBSession, contract_type_name: str):
+        """根据合同类型名称获取合同类型"""
+        return db.query(ContractType).filter(ContractType.name == contract_type_name).first()
+
 class CRUDContract:
 
     @staticmethod
-    async def create_contract_file(db: DBSession, user_id: int, file) -> UploadResponse:
+    async def create_contract_file(
+            db: DBSession,
+            user_id: int,
+            file_name: str,
+            file_type: str,
+            contract_content: str,
+            save_path: str,
+            party_a: str,
+            party_b: str,
+            amount: str,
+    ) -> UploadResponse:
         """上传并保存合同文件"""
-        file_type = file.filename.rsplit(".")[-1]
-        save_dir = os.path.join(settings.UPLOAD_DIR, str(user_id))
-        os.makedirs(save_dir, exist_ok=True)
-
-        save_path = os.path.join(save_dir, file.filename)
-        with open(save_path, "wb") as f:
-            shutil.copyfileobj(file.file, f)
 
         new_file = ContractFile(
             user_id=user_id,
-            title=file.filename,
+            title=file_name,
+            contract_content=contract_content,
             file_path=save_path,
             file_type=file_type,
+            party_a=party_a,
+            party_b=party_b,
+            amount=amount,
             upload_time=datetime.now(),
             status="uploaded"
         )
@@ -46,7 +62,7 @@ class CRUDContract:
 
         # 构造文件访问 URL（静态映射路径）
         # 注意 URL 中中文或空格文件名要编码
-        relative_path = f"/static/{user_id}/{quote(file.filename)}"
+        relative_path = f"/static/{user_id}/{quote(file_name)}"
         file_url =f"{relative_path}"
 
         return UploadResponse(
@@ -56,6 +72,22 @@ class CRUDContract:
             file_type=new_file.file_type,
             file_url=file_url
         )
+    @staticmethod
+    async def set_contract_type(db: DBSession, file_id: int, contract_type_id: int, review_position: int) -> bool:
+        """设置合同类型"""
+        contract_type = db.query(ContractType).filter(ContractType.id == contract_type_id).first()
+        if not contract_type:
+            return False
+        file_data = db.query(ContractFile).filter(ContractFile.id == file_id).first()
+        if file_data:
+            file_data.contract_type_id = contract_type.id
+            file_data.review_position = review_position
+            db.commit()
+            db.refresh(file_data)
+            return True
+        else:
+            return False
+
 
 
     @staticmethod

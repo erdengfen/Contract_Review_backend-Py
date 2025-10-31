@@ -23,9 +23,3 @@ class User(Base):
     # 新增字段
     employee_id = Column(String(64),comment="员工ID")
     department = Column(String(64),comment="部门")
-    # 新增字段
-    employee_id = Column(String(64),comment="员工ID")
-    department = Column(String(64),comment="部门")
-    # 新增字段
-    employee_id = Column(String(64),comment="员工ID")
-    department = Column(String(64),comment="部门")

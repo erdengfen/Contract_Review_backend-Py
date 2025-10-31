@@ -10,7 +10,7 @@ from typing import Optional, List
 from sqlalchemy.orm import Session as DBSession
 from sqlalchemy import desc
 
-from app.models.review import ReviewTask, ReviewResult, RiskItem
+from app.models.review import ReviewTask, ReviewResult
 from app.schemas.review_task import ReviewTaskCreateRequest
 
 
@@ -81,75 +81,43 @@ class CRUDReviewTask:
             db.refresh(task)
         return task
 
+
+
+class CRUDReviewResult:
+    """审查结果CRUD操作"""
+
     @staticmethod
     def create_review_result(
-        db: DBSession,
-        task_id: int,
-        overall_risk: str,
-        summary: str,
-        suggestion: str
-    ) -> ReviewResult:
-        """创建审阅结果"""
+            db: DBSession,
+            session_id: int,
+            task_id: int,
+            index: int,
+            original_content: str,
+            risk_analysis: str,
+            risk_level: str,
+            suggested_content: str,
+    )-> ReviewResult:
+        """创建审查结果"""
         review_result = ReviewResult(
+            session_id=session_id,
             task_id=task_id,
-            overall_risk=overall_risk,
-            summary=summary,
-            suggestion=suggestion
+            index=index,
+            original_content=original_content,
+            risk_analysis=risk_analysis,
+            risk_level=risk_level,
+            suggested_content=suggested_content,
         )
         db.add(review_result)
         db.commit()
         db.refresh(review_result)
         return review_result
-
     @staticmethod
-    def create_risk_item(
-        db: DBSession,
-        result_id: int,
-        clause_text: str,
-        risk_type: str,
-        risk_level: str,
-        suggestion: str
-    ) -> RiskItem:
-        """创建风险项"""
-        risk_item = RiskItem(
-            result_id=result_id,
-            clause_text=clause_text,
-            risk_type=risk_type,
-            risk_level=risk_level,
-            suggestion=suggestion
-        )
-        db.add(risk_item)
-        db.commit()
-        db.refresh(risk_item)
-        return risk_item
-
+    def get_review_result(db: DBSession, result_id: int):
+        """根据结果ID获取审查结果"""
+        return db.query(ReviewResult).filter(ReviewResult.id == result_id).first()
     @staticmethod
-    def get_review_result(db: DBSession, task_id: int) -> Optional[ReviewResult]:
-        """获取审阅结果"""
-        return db.query(ReviewResult).filter(ReviewResult.task_id == task_id).first()
-
-    @staticmethod
-    def get_risk_items(db: DBSession, result_id: int) -> List[RiskItem]:
-        """获取风险项列表"""
-        return db.query(RiskItem).filter(RiskItem.result_id == result_id).all()
-
-    @staticmethod
-    def delete_review_task(db: DBSession, task_id: int) -> bool:
-        """删除审阅任务及其相关数据"""
-        try:
-            # 删除风险项
-            db.query(RiskItem).filter(RiskItem.result_id.in_(
-                db.query(ReviewResult.id).filter(ReviewResult.task_id == task_id)
-            )).delete(synchronize_session=False)
-            
-            # 删除审阅结果
-            db.query(ReviewResult).filter(ReviewResult.task_id == task_id).delete()
-            
-            # 删除审阅任务
-            db.query(ReviewTask).filter(ReviewTask.id == task_id).delete()
-            
-            db.commit()
-            return True
-        except Exception as e:
-            db.rollback()
-            return False
+    def get_review_task_results(db: DBSession, task_id: int) :
+        """根据任务ID获取审查结果列表"""
+        return db.query(ReviewResult).filter(
+            ReviewResult.task_id == task_id).order_by(
+            ReviewResult.index).all()
