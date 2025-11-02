@@ -363,9 +363,7 @@ async def start_task(
                 overall_risk = "中"
             summary = f"共发现 {global_index} 个潜在风险点，整体风险等级为 {overall_risk}。"
             suggestion = f"建议重点关注风险等级较高的条款，并根据 {review_task.stance} 立场进行相应调整。"
-            yield {
-                "event": "end",
-                "data": json.dumps(
+            yield json.dumps(
                     ReviewTaskSSEResponse(
                         event="end",
                         data={
@@ -374,7 +372,6 @@ async def start_task(
                             "suggestion": suggestion
                         }
                     ).model_dump(), ensure_ascii=False)
-            }
     return  EventSourceResponse(
         event_generator()
     )
