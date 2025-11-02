@@ -77,7 +77,3 @@ class ReviewTaskDetailResponse(BaseModel):
     risk_items: List[RiskItemResponse] = Field(..., description="风险项列表")
 
 
-class ChatRequest(BaseModel):
-    """合同问答请求"""
-    contract_id: str = Field(..., description="合同ID")
-    question: str = Field(..., description="用户问题")
