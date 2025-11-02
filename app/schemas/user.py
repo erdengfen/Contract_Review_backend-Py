@@ -33,7 +33,7 @@ class UserResponse(BaseModel):
     is_active: Optional[bool] = Field(True,description="是否活跃")
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # --------------------login----------------------
 

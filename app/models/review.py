@@ -28,6 +28,20 @@ class ReviewTask(Base):
     created_at = Column(TIMESTAMP, default=datetime.now, comment="创建时间")
     completed_at = Column(TIMESTAMP, default=datetime.now, comment="完成时间")
 
+    def dict(self):
+        return {
+            "id": self.id,
+            "session_id": self.session_id,
+            "contract_id": self.contract_id,
+            "user_id": self.user_id,
+            "stance": self.stance,
+            "intensity": self.intensity,
+            "description": self.description,
+            "status": self.status,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+        }
+
 class ReviewResult(Base):
     """
     审查结果表

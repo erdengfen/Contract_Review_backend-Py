@@ -33,6 +33,15 @@ class ReviewTaskResponse(BaseModel):
     completed_at: Optional[datetime] = Field(None, description="完成时间")
 
 
+
+
+class ReviewTaskSSEResponse(BaseModel):
+    """
+    审查任务流式分块响应数据格式
+    """
+    event: Optional[str]=Field(...,description="事件类型")
+    data:Optional[dict]=Field(...,description="数据")
+
 class ReviewResultResponse(BaseModel):
     """审阅结果响应"""
     id: int = Field(..., description="结果ID")
@@ -54,20 +63,18 @@ class RiskItemResponse(BaseModel):
     suggestion: str = Field(..., description="建议")
 
 
+
 class ReviewTaskListResponse(BaseModel):
     """审阅任务列表响应"""
     total: int = Field(..., description="总记录数")
     tasks: List[ReviewTaskResponse] = Field(..., description="任务列表")
 
 
-class ReviewProgressResponse(BaseModel):
-    """审阅进度响应"""
-    task_id: int = Field(..., description="任务ID")
-    current_chunk: int = Field(..., description="当前分块")
-    total_chunks: int = Field(..., description="总分块数")
-    percentage: float = Field(..., description="完成百分比")
-    status: str = Field(..., description="状态")
-    message: str = Field(..., description="状态消息")
+class ReviewTaskDetailResponse(BaseModel):
+    """审阅任务详情响应"""
+    task: ReviewTaskResponse = Field(..., description="任务详情")
+    results: List[ReviewResultResponse] = Field(..., description="结果列表")
+    risk_items: List[RiskItemResponse] = Field(..., description="风险项列表")
 
 
 class ChatRequest(BaseModel):

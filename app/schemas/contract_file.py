@@ -23,4 +23,4 @@ class UploadResponse(BaseModel):
     party_b: Optional[str] = Field(..., description="乙方名称")
     amount: Optional[str] = Field(..., description="合同金额")
     class Config:
-        orm_mode = True
+        from_attributes = True

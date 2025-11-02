@@ -15,7 +15,7 @@ from app.config.config import settings
 
 from app.middlewares.auth import verify_token
 from fastapi.responses import FileResponse
-from  app.router import user, contract, review_task,chat_session, cas_auth,contract_type,prompt_manage
+from  app.router import user, contract, review_task,chat_session, cas_auth,contract_type,prompt_manage,model_configs
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -77,6 +77,8 @@ app.include_router(contract.router, prefix="/api/contract", tags=["文件上传�
 app.include_router(review_task.router, prefix="/api/review_task", tags=["合同审阅"])
 app.include_router(contract_type.router, prefix="/api/contract_type", tags=["合同类型管理"])
 app.include_router(prompt_manage.router, prefix="/api/prompt_manage", tags=["提示词管理"])
+app.include_router(model_configs.router, prefix="/api/model_configs", tags=["模型配置管理"])
+
 
 
 app.include_router(cas_auth.router, tags=["CAS认证"])

@@ -70,7 +70,10 @@ class CRUDContract:
             title=new_file.title,
             file_path=new_file.file_path,
             file_type=new_file.file_type,
-            file_url=file_url
+            file_url=file_url,
+            party_a=new_file.party_a,
+            party_b=new_file.party_b,
+            amount=new_file.amount,
         )
     @staticmethod
     async def set_contract_type(db: DBSession, file_id: int, contract_type_id: int, review_position: int) -> bool:

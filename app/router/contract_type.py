@@ -8,6 +8,7 @@
 
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import List
 from sqlalchemy.orm import Session
 from app.schemas.base import GenericResponse
 from app.core.dependencies import get_db
@@ -19,10 +20,10 @@ from app.curd.contract_type import (
     inactive_contract_type, get_contract_type_list,
 )
 
-router = APIRouter(prefix="/contract-type", tags=["Contract Type Management"])
+router = APIRouter(tags=["Contract Type Management"])
 
 # ------------------- 查询合同类型 -------------------
-@router.get("/{contract_type_id}", response_model=GenericResponse[ContractTypeResponse],summary="查询合同类型")
+@router.get("/detail/{contract_type_id}", response_model=GenericResponse[ContractTypeResponse],summary="查询合同类型")
 async def read_contract_type(
     contract_type_id: int,
     db: Session = Depends(get_db)
@@ -35,8 +36,8 @@ async def read_contract_type(
         msg="获取合同类型成功",
         data=db_contract)
 
-@router.get("/list", response_model=GenericResponse[list[ContractTypeResponse]],summary="查询合同类型列表")
-async def read_contract_type_list(
+@router.get("/contract_type_list", response_model=GenericResponse[List[ContractTypeResponse]],summary="查询合同类型列表")
+async def contract_type_list(
     db: Session = Depends(get_db)
 ):
     db_contract_list = await get_contract_type_list(db)

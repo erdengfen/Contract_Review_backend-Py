@@ -27,4 +27,4 @@ class ContractTypeResponse(BaseModel):
     name: str = Field(..., description="合同类型名称")
     description: str = Field(..., description="合同类型描述")
     class Config:
-        orm_mode = True
+        from_attributes = True

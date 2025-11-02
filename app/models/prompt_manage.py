@@ -51,7 +51,7 @@ class PromptOverrides(Base):
     """
     __tablename__ = "prompt_overrides"
     id = Column(Integer, primary_key=True,comment="ID")
-    system_base_prompt_id = Column(Integer,comment="基础promptID") # 关联机构prompt
+    system_base_prompt_id = Column(Integer,comment="基础promptID")
     override_name = Column(String(255),comment="个性化prompt名称")
     override_text = Column(Text,comment="个性化prompt文本")
     created_at = Column(TIMESTAMP, default=datetime.now, comment="创建时间")

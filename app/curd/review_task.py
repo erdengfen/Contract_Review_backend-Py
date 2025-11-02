@@ -6,7 +6,7 @@
 @Date    ：2025/10/23 10:12 
 """
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Type
 from sqlalchemy.orm import Session as DBSession
 from sqlalchemy import desc
 
@@ -56,15 +56,19 @@ class CRUDReviewTask:
         user_id: int, 
         skip: int = 0, 
         limit: int = 100
-    ) -> List[ReviewTask]:
+    ) -> list[Type[ReviewTask]]:
         """获取用户的审阅任务列表"""
-        return db.query(ReviewTask)\
-            .filter(ReviewTask.user_id == user_id)\
-            .order_by(desc(ReviewTask.created_at))\
-            .offset(skip)\
-            .limit(limit)\
-            .all()
-
+        return  db.query(ReviewTask).filter(
+            ReviewTask.user_id == user_id,
+        ).order_by(
+            desc(
+                ReviewTask.created_at
+            )
+        ).offset(
+            skip
+        ).limit(
+            limit
+        ).all()
     @staticmethod
     def update_task_status(
         db: DBSession, 

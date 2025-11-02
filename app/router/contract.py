@@ -59,14 +59,15 @@ async def upload_contract_file(
             contract_content = docx2md(save_path, None)
         contract_type =  llm_client.invoke(
             [
-                SystemMessage(content="你是一个合同类型识别助手"),
+                SystemMessage(content="你是一个合同类型识别助手,你具有识别合同类型以及识别甲方乙方名称以及金额的能力"),
                 HumanMessage(content=f"""
                 请你根据文档内容识别合同类型，以及甲乙方的名称
-                文档内容：{contract_content[500]}
-                返回格式如下：
+                文档内容：{contract_content[:1000]}
+                返回格式如下:
                 甲方：{{甲方名称}}
                 乙方：{{乙方名称}}
                 金额：{{金额}}
+                
                 """)
             ]
         )
@@ -88,7 +89,6 @@ async def upload_contract_file(
         )
         return GenericResponse(code=200, msg="上传成功", data=upload_result)
     except Exception as e:
-        db.rollback()
         return GenericResponse(code=500, msg=f"文件上传失败: {str(e)}")
 
 @router.post("/set_contract_type", response_model=GenericResponse, summary="设置合同类型及其审查立场")
