@@ -19,11 +19,23 @@ class ServerConfig(BaseModel):
     workers: int = Field(4, description="工作进程数")
 
 
+class CASConfig(BaseModel):
+    host_local: str = Field("0.0.0.0", description="本地CES主机地址")
+    host_online: str = Field("agents.cqupt.edu.cn", description="线上CES主机地址")
+    port: int = Field(8080, description="CES端口")
+    SECRET_KEY: str = Field(..., description="JWT密钥")
+    ALGORITHM: str = Field("HS256", description="JWT算法")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(60, description="访问令牌过期时间（分钟）")
+    vanna_url_local: str = Field("172.22.182.17:8084", description="本地Vanna URL")
+    vanna_url_online: str = Field("vanna:8084", description="线上Vanna URL")
+
+
+
 class OpenAIConfig(BaseModel):
-    provider: str = Field("deepseek", description="LLM提供者，如 deepseek/openai")
+    # provider: str = Field("deepseek", description="LLM提供者，如 deepseek/openai")
     api_key: str = Field(..., description="LLM API密钥")
     model: str = Field("deepseek-chat", description="模型名称")
-
+    api_base: str = Field("https://openai.deepseek.cn/v1", description="LLM API基础URL")
 
 
 class DatabaseConfig(BaseModel):
@@ -65,8 +77,10 @@ class LoggingConfig(BaseModel):
     backup_days: int = Field(30, description="日志备份天数")
     encoding: str = Field("utf-8", description="日志编码")
 
-class CASConfig(BaseModel):
-    service_url: str = Field(f"http//")
+class MCPConfig(BaseModel):
+    url: str = Field(..., description="MCP服务器URL")
+
+
 
 class Config(BaseModel):
     APP_NAME: str = Field("合同审阅系统API", description="应用名称")
@@ -78,11 +92,14 @@ class Config(BaseModel):
     MAX_CONCURRENT_SESSIONS: int = Field(100, description="最大并发会话数")
 
     server: ServerConfig
+    cas_config: CASConfig
     openai_config: OpenAIConfig
     database: DatabaseConfig
     redis_config: RedisConfig
     jwt_config: JWTConfig
     logging_config: LoggingConfig
+    mcp_server: MCPConfig
+
 
 
 def load_config(config_path=BASE_DIR / "app" / "config" / "config.yaml"):

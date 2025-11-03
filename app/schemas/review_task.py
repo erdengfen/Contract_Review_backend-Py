@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 class ReviewTaskCreateRequest(BaseModel):
     """创建审阅任务请求"""
     contract_id: int = Field(..., description="合同文件ID")
+    session_id: int = Field(..., description="会话ID")
     stance: str = Field(..., description="审查立场（甲方/乙方）")
     intensity: str = Field(..., description="审查尺度（严格/标准/宽松）")
     description: Optional[str] = Field(None, description="审查需求描述")
@@ -21,6 +22,7 @@ class ReviewTaskCreateRequest(BaseModel):
 class ReviewTaskResponse(BaseModel):
     """审阅任务响应"""
     id: int = Field(..., description="任务ID")
+    session_id: int = Field(..., description="会话ID")
     contract_id: int = Field(..., description="所属文件ID")
     user_id: int = Field(..., description="发起用户ID")
     stance: str = Field(..., description="审查立场")
@@ -31,9 +33,19 @@ class ReviewTaskResponse(BaseModel):
     completed_at: Optional[datetime] = Field(None, description="完成时间")
 
 
+
+
+class ReviewTaskSSEResponse(BaseModel):
+    """
+    审查任务流式分块响应数据格式
+    """
+    event: Optional[str]=Field(...,description="事件类型")
+    data:Optional[dict]=Field(...,description="数据")
+
 class ReviewResultResponse(BaseModel):
     """审阅结果响应"""
     id: int = Field(..., description="结果ID")
+    session_id: int = Field(..., description="会话ID")
     task_id: int = Field(..., description="任务ID")
     overall_risk: str = Field(..., description="整体风险等级")
     summary: str = Field(..., description="审阅摘要")
@@ -51,20 +63,18 @@ class RiskItemResponse(BaseModel):
     suggestion: str = Field(..., description="建议")
 
 
+
 class ReviewTaskListResponse(BaseModel):
     """审阅任务列表响应"""
     total: int = Field(..., description="总记录数")
     tasks: List[ReviewTaskResponse] = Field(..., description="任务列表")
 
 
-class ReviewProgressResponse(BaseModel):
-    """审阅进度响应"""
-    task_id: int = Field(..., description="任务ID")
-    current_chunk: int = Field(..., description="当前分块")
-    total_chunks: int = Field(..., description="总分块数")
-    percentage: float = Field(..., description="完成百分比")
-    status: str = Field(..., description="状态")
-    message: str = Field(..., description="状态消息")
+class ReviewTaskDetailResponse(BaseModel):
+    """审阅任务详情响应"""
+    task: ReviewTaskResponse = Field(..., description="任务详情")
+    results: List[ReviewResultResponse] = Field(..., description="结果列表")
+    risk_items: List[RiskItemResponse] = Field(..., description="风险项列表")
 
 
 class ChatRequest(BaseModel):

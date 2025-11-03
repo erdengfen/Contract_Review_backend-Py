@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from ..core.config import MCP_SERVER_URL
 from pathlib import Path
-
+from app.config.config import settings
 logger = logging.getLogger(__name__)
 
 class MCPClient:
@@ -21,7 +21,7 @@ class MCPClient:
         try:
             self.client = MultiServerMCPClient({
                 "office-word-mcp": {
-                    "url": MCP_SERVER_URL,
+                    "url": settings.mcp_server.url,
                     "transport": "streamable_http",
                 }
             })

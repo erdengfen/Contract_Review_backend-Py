@@ -16,7 +16,7 @@ from app.core.global_init import llm_manager, redis_handler
 
 from app.middlewares.auth import verify_token
 from fastapi.responses import FileResponse
-from app.router import user, contract, review_task, chat_session, llm_config, cas_auth
+from  app.router import user, contract, review_task,chat_session, cas_auth,contract_type,prompt_manage,model_configs
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -77,7 +77,9 @@ app.include_router(user.router, prefix="/api/user", tags=["用户管理"])
 app.include_router(chat_session.router, prefix="/api/chat_session", tags=["会话管理"])
 app.include_router(contract.router, prefix="/api/contract", tags=["文件上传下载"])
 app.include_router(review_task.router, prefix="/api/review_task", tags=["合同审阅"])
-app.include_router(llm_config.router, prefix="/api/llm_config", tags=["llm管理"])
+app.include_router(contract_type.router, prefix="/api/contract_type", tags=["合同类型管理"])
+app.include_router(prompt_manage.router, prefix="/api/prompt_manage", tags=["提示词管理"])
+app.include_router(model_configs.router, prefix="/api/model_configs", tags=["模型配置管理"])
 app.include_router(cas_auth.router, tags=["CAS认证"])
 
 

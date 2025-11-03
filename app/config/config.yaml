@@ -11,14 +11,24 @@ CAS_SERVICE_URL: "http://localhost:8080/api/user/login"
 CAS_VERSION: 3
 server:
   host: 0.0.0.0
-  port: 8080
+  port: 8085
   timeout: 60
   workers: 4
 
+cas_config:
+  host_local: 0.0.0.0
+  host_online: agents.cqupt.edu.cn
+  port: 8080
+  SECRET_KEY: "eac77e4e9a9a767b792779132e84ea37b1f4c31bec56714607f617a3fbdfbd53"
+  ALGORITHM: "HS256"
+  ACCESS_TOKEN_EXPIRE_MINUTES: 60
+  vanna_url_local: 172.22.182.17:8084
+  vanna_url_online: vanna:8084
+
 openai_config:
-  provider: "deepseek"
-  api_key: "sk-1234567890abcdef1234567890abcdef"
-  model: "deepseek-chat"
+  api_base: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  api_key: "sk-561f4f1fcfb9480898ea821083a5ba95"
+  model: "qwen-turbo"
 
 database:
   host: 127.0.0.1
@@ -29,6 +39,9 @@ database:
   pool_size: 10
   pool_timeout: 30
 
+
+mcp_server:
+  url: "http://117.72.56.2:8081/mcp/"
 
 redis_config:
   host: 127.0.0.1

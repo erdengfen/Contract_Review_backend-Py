@@ -31,3 +31,6 @@ class UserLLMConfig(Base):
     model_provider = Column(String(128),comment="模型供应商")
     base_url = Column(String(128),comment="模型url")
     is_active = Column(Boolean, default=False, comment="是否为当前使用模型")
+    # 新增字段
+    employee_id = Column(String(64),comment="员工ID")
+    department = Column(String(64),comment="部门")

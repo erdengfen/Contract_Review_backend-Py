@@ -19,7 +19,8 @@ async def verify_password(plain_password: str, hashed_password: str):
     :param hashed_password: 哈希密码
     :return: 密码是否匹配
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    return plain_password == hashed_password
+    # return pwd_context.verify(plain_password, hashed_password)
 
 async def create_user(session: Session, username: str, password_hash: str):
     """
@@ -109,11 +110,9 @@ async def authenticate_user(db: Session, identifier: str, password: str):
     :param password: 密码
     :return: 用户对象或 False
     """
-    # 不传入current_user_id，因为登录时不需要关注状态
     user = await get_user_by_username(db, identifier)
     if not user:
         return False
-    # 加密密码验证
-    # if not verify_password(password, user.password):
-    #     return False
+    if not (await verify_password(password, user.password)):
+        return False
     return user

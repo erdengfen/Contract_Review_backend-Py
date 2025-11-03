@@ -7,18 +7,21 @@
 """
 from datetime import timedelta
 
-from fastapi import Depends, APIRouter, HTTPException
+from fastapi import Depends, APIRouter,  Request, HTTPException
 from sqlalchemy.orm import Session
 from starlette import status
+from starlette.responses import RedirectResponse
 
+from app.config.config import settings
 from app.core.dependencies import get_db
-from app.curd.user import authenticate_user
+from app.curd.user import authenticate_user, get_user_by_username
 from app.middlewares.auth import get_valid_tokens, jwt_config, create_access_token, create_refresh_token, \
     optional_get_current_user
 from app.models import User
 from  app.schemas.base import GenericResponse
 from app.curd import user as user_crud
 from app.schemas.user import UserResponse, UserCreate, UserUpdate, LoginRequest, LoginResponse
+from app.utils.cas_server import cas_client
 
 router = APIRouter(tags=["用户管理"])
 
@@ -128,3 +131,47 @@ async def login_for_access_token(
         token_type="bearer",
         refresh_token=refresh_token
     ))
+
+
+@router.get("/cas_login", summary="CAS 登录跳转")
+async def cas_login():
+    """重定向用户到 CAS 登录页"""
+    login_url = cas_client.get_login_url()
+    return RedirectResponse(url=login_url)
+
+
+@router.get("/cas_callback", summary="CAS 登录回调")
+async def cas_callback(request: Request):
+    """CAS 登录验证票据"""
+    ticket = request.query_params.get('ticket')
+    if not ticket:
+        raise HTTPException(status_code=400, detail="Missing CAS ticket")
+
+    try:
+        user, attributes, pgtiou = cas_client.verify_ticket(ticket)
+        username = attributes.get("userName") or user
+        user_id = attributes.get("userId") or attributes.get("uid")
+
+        # 如果数据库中没有此用户，可自动注册或拒绝登录
+        # user_obj = await get_user_by_username(db, username)
+        # if not user_obj: ...
+
+
+        access_token_expires = timedelta(minutes=settings.jwt_config.access_token_expire_minutes)
+        refresh_token_expires = timedelta(days=settings.jwt_config.refresh_token_expire_days)
+
+        access_token = await create_access_token(
+            data={"sub": username, "user_id": user_id},
+            expires_delta=access_token_expires
+        )
+        refresh_token = await create_refresh_token(
+            data={"sub": username, "user_id": user_id},
+            expires_delta=refresh_token_expires
+        )
+
+        # ✅ 统一返回 JWT，前端可保存或直接跳转
+        redirect_url = f"http://{settings.cas_config.host_local}/?token={access_token}"
+        return RedirectResponse(url=redirect_url)
+
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"CAS verification failed: {str(e)}")
