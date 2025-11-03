@@ -82,7 +82,16 @@ class CRUDSession:
             db.rollback()
             return None
 
-
+    @staticmethod
+    async def get_session(db: DBSession, session_id: int):
+        """获取指定会话"""
+        return (
+            db.query(Session)
+            .filter(
+                Session.id == session_id,
+            )
+            .first()
+        )
 
 class CRUDMessage:
     @staticmethod

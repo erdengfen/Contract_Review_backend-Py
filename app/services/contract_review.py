@@ -23,9 +23,21 @@ class ContractReviewService:
     #初始化函数
     def __init__(self, mcp_client: MCPClient):
         self.mcp_client = mcp_client
+    
+    # def detect_stance(self, text: str) -> str:
+    #     """简单识别合同立场：统计'甲方'与'乙方'出现次数，默认'甲方'"""
+    #     try:
+    #         a = text.count("甲方")
+    #         b = text.count("乙方")
+    #         if b > a:
+    #             return "乙方"
+    #         return "甲方"
+    #     except Exception:
+    #         return "甲方"
+    
+    async def review_contract(self,async_client,model_config, chunk_text: str, stance: str = "甲方", intensity: str = "标准", 
+                            context: str = "") -> List[Dict[str, Any]]:
 
-    async def review_contract(self, user_id: int ,chunk_text: str, stance: str = "甲方", intensity: str = "标准",
-                            context: str = "", db:Session = Depends(get_db)) -> List[Dict[str, Any]]:
         """执行合同审阅"""
         try:
             # 构建审阅提示词
@@ -86,15 +98,32 @@ class ContractReviewService:
 请确保分析专业、建议可行、格式规范。结合上下文信息，保持审阅的连贯性。
 """
 
+            # messages = [
+            #     SystemMessage(content="你是一个专业的合同审查律师，请严格按照提示词要求进行合同审阅。"),
+            #     HumanMessage(content=review_prompt)
+            # ]
             messages = [
-                SystemMessage(content="你是一个专业的合同审查律师，请严格按照提示词要求进行合同审阅。"),
-                HumanMessage(content=review_prompt)
+                {
+                    "role": "system",
+                    "content": "你是一个专业的合同审查律师，请严格按照提示词要求进行合同审阅。"
+                },
+                {
+                    "role": "user",
+                    "content": review_prompt
+                }
             ]
-
             # 调用模型并解析结果
-            llm = await llm_manager.get_user_llm(user_id=user_id, db_session=db)
-            response = llm.invoke(messages)
-            review_result = response.content
+            response = await async_client.chat.completions.create(
+                model=model_config.model_name,
+                stream=False,
+                messages=messages,
+                temperature=model_config.temperature,
+                max_tokens=model_config.max_tokens,
+                top_p=model_config.top_p,
+                frequency_penalty=model_config.frequency_penalty,
+                presence_penalty=model_config.presence_penalty
+            )
+            review_result = response.choices[0].message.content
             modifications = self._parse_review_result(review_result)
 
             return modifications
