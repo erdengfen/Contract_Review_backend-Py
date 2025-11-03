@@ -26,8 +26,8 @@ async def create_contract_type(db: Session, contract_type: ContractTypeSchema):
     创建合同类型
     """
     db_contract_type = ContractType(
-        name=contract_type.contract_type_name,
-        description=contract_type.contract_type_description,
+        name=contract_type.name,
+        description=contract_type.description,
     )
     db.add(db_contract_type)
     db.commit()
@@ -42,10 +42,10 @@ async def update_contract_type(db: Session, contract_type_id: int, contract_type
     db_contract_type = db.query(ContractType).filter(ContractType.id == contract_type_id).first()
     if not db_contract_type:
         return None
-    if contract_type.contract_type_name is not None:
-        db_contract_type.name = contract_type.contract_type_name
-    if contract_type.contract_type_description is not None:
-        db_contract_type.description = contract_type.contract_type_description
+    if contract_type.name is not None:
+        db_contract_type.name = contract_type.name
+    if contract_type.description is not None:
+        db_contract_type.description = contract_type.description
     db.commit()
     db.refresh(db_contract_type)
     return db_contract_type

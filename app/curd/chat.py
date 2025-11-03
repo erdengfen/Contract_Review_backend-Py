@@ -12,6 +12,7 @@ from openai import AsyncClient
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from typing import List, Optional
+from datetime import datetime
 
 from app.core.llm import stream_chat_model
 from app.models.session_message import Session as DBSession, Message
@@ -111,15 +112,16 @@ async def chat_stream_generator(
     try:
         async for delta in stream_chat_model(async_client, messages, model_config):
             full_content += delta
-            yield f"data: {json.dumps({
+            data = {
                 'type': 'content',
                 'session_id': session_id,
                 'contract_id': contract_id,
                 'user_id': user_id,
                 'content': delta,
                 'role': 'assistant'
-            }, ensure_ascii=False)}\n\n"
-        
+            }
+            yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+
         # 创建消息记录
         message = create_message(
             db=db,
@@ -129,24 +131,27 @@ async def chat_stream_generator(
         )
         
         # 完成时返回更多信息
-        yield f"data: {json.dumps({
+        data = {
             'type': 'done',
             'session_id': session_id,
             'contract_id': contract_id,
             'user_id': user_id,
             'message_id': message.id if message else None,
             'full_content': full_content
-        }, ensure_ascii=False)}\n\n"
+        }
+        yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+
 
     except Exception as e:
         error_msg = f"AI 生成出错: {str(e)}"
-        yield f"data: {json.dumps({
+        error_data = {
             'type': 'error',
             'session_id': session_id,
             'contract_id': contract_id,
             'user_id': user_id,
             'error': error_msg
-        }, ensure_ascii=False)}\n\n"
+        }
+        yield f"data: {json.dumps(error_data, ensure_ascii=False)}\n\n"
 
         raise
 

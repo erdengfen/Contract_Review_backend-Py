@@ -56,7 +56,7 @@ async def get_system_prompt_id_api(
         raise HTTPException(status_code=404, detail="System prompt not found")
     return GenericResponse(
         code=200,
-        data=result,
+        data={"prompt_id": result},
         msg="获取系统Prompt ID成功"
     )
 

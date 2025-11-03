@@ -27,3 +27,5 @@ alembic.ini
 /uv.lock
 /output/output.md
 /output/
+
+.tar*

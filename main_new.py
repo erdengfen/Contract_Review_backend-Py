@@ -88,9 +88,6 @@ app.include_router(review_task.router, prefix="/api/review_task", tags=["合同�
 app.include_router(contract_type.router, prefix="/api/contract_type", tags=["合同类型管理"])
 app.include_router(prompt_manage.router, prefix="/api/prompt_manage", tags=["提示词管理"])
 app.include_router(model_configs.router, prefix="/api/model_configs", tags=["模型配置管理"])
-
-
-
 app.include_router(cas_auth.router, tags=["CAS认证"])
 
 

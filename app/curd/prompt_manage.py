@@ -28,7 +28,7 @@ async  def create_system_prompt(db: DBSession, prompt: SystemPromptSchema):
     db_prompt = SystemPrompt(
         contract_type_id=prompt.contract_type_id,
         prompt_name=prompt.prompt_name,
-        prompt_text=prompt.prompt_text,
+        prompt_text=prompt.prompt_content,
     )
     db.add(db_prompt)
     db.commit()
@@ -118,8 +118,8 @@ async  def update_base_prompt(db: DBSession, prompt: UpdateBasePromptSchema):
                                               BasePrompt.organization_id == prompt.organization_id).first()
     if not db_prompt:
         return None
-    if prompt.contract_type_id is not None:
-        db_prompt.contract_type_id = prompt.contract_type_id
+    # if prompt.contract_type_id is not None:
+    #     db_prompt.contract_type_id = prompt.contract_type_id
     if prompt.prompt_name is not None:
         db_prompt.prompt_name = prompt.prompt_name
     if prompt.prompt_text is not None:

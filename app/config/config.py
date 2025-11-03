@@ -42,8 +42,8 @@ class DatabaseConfig(BaseModel):
     host: str = Field("localhost", description="数据库主机地址")
     port: int = Field(3306, description="数据库端口")
     name: str = Field("contract_review", description="数据库名称")
-    username: str = Field("admin", description="数据库用户名")
-    password: str = Field("admin123", description="数据库密码")
+    username: str = Field("root", description="数据库用户名")
+    password: str = Field("123456", description="数据库密码")
     pool_size: int = Field(10, description="数据库连接池大小")
     pool_timeout: int = Field(30, description="数据库连接池超时时间（秒）")
 
