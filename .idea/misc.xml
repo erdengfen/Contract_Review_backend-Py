@@ -3,9 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="langchain-env" />
   </component>
-<<<<<<< HEAD
   <component name="ProjectRootManager" version="2" project-jdk-name="hetong" project-jdk-type="Python SDK" />
-=======
-  <component name="ProjectRootManager" version="2" project-jdk-name="Contract_Review_backend-Py" project-jdk-type="Python SDK" />
->>>>>>> origin/psg
 </project>

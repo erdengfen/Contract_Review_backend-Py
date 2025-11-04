@@ -15,11 +15,8 @@ from sqlalchemy.orm import Session as DBSession
 from app.config.config import settings
 from app.core.global_init import llm_manager
 from app.models.contract import ContractFile
-<<<<<<< HEAD
-=======
 from app.models.contract_type import ContractType
 from app.models.user import User
->>>>>>> origin/psg
 from app.schemas.contract_file import UploadResponse
 from app.utils.contract_parser import ContractParser
 
@@ -87,11 +84,7 @@ class CRUDContract:
             file_url=file_url,
             party_a=new_file.party_a,
             party_b=new_file.party_b,
-<<<<<<< HEAD
-            contract_value=new_file.contract_value,
-=======
             amount=new_file.amount,
->>>>>>> origin/psg
         )
     @staticmethod
     async def set_contract_type(db: DBSession, file_id: int, contract_type_id: int, review_position: int) -> bool:

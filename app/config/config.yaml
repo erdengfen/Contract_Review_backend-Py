@@ -41,7 +41,7 @@ database:
 
 
 mcp_server:
-  url: "http://117.72.56.2:8081/mcp/"
+  url: "http://127.0.0.1:8081/mcp/"
 
 redis_config:
   host: 127.0.0.1

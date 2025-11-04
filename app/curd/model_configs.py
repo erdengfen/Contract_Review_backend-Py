@@ -17,7 +17,7 @@ from app.models.model_configs import ModelConfig
 from app.schemas.model_configs import ModelConfigCreate, ModelConfigUpdate, ModelConfigResponse
 
 
-async def get_model_configs(db: Session, page: int = 0, size: int = 100) -> List[ModelConfig]:
+async def get_model_configs(db: Session, page: int = 1, size: int = 100) -> List[ModelConfig]:
     skip = (page - 1) * size
     return db.query(ModelConfig).offset(skip).limit(size).all()
 
