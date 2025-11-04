@@ -60,7 +60,7 @@ async  def  get_system_prompt_id(db: DBSession, base_prompt_id: int):
     db_prompt = db.query(SystemPrompt).filter(SystemPrompt.id == base_prompt_id).first()
     if not db_prompt:
         return None
-    return db_prompt.id
+    return db_prompt
 
 async  def get_system_prompt_contract_type_id(db: DBSession, contract_type_id: int):
     """
@@ -175,6 +175,9 @@ async def restore_base_prompt(db: DBSession, base_prompt_id: int, organization_i
 async  def create_prompt_override(db: DBSession, prompt: PromptOverridesSchema):
     """
     创建个性化 Prompt
+    # 关联机构的id
+    没有 是无法创建的
+
     """
     db_prompt = db.query(BasePrompt).filter(BasePrompt.id == prompt.base_prompt_id).first()
     if not db_prompt:

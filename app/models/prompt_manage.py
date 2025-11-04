@@ -28,6 +28,7 @@ class SystemPrompt(Base):
     updated_at = Column(TIMESTAMP, default=datetime.now, onupdate=datetime.now, comment="更新时间")
 
 
+
 class BasePrompt(Base):
     """
     机构prompt表主要记录重写后的prompt文本

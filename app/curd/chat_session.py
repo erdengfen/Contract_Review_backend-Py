@@ -30,21 +30,30 @@ class CRUDSession:
         return new_session
 
     @staticmethod
-    async def get_user_sessions(db: DBSession, user_id: int, skip: int = 0, limit: int = 10):
+    async def get_user_sessions(db: DBSession,
+                                user_id: int,
+                                skip: int = 0,
+                                limit: int = 10,
+                                session_type: Optional[str] = None):
         """分页获取用户的会话历史"""
-        return (
+        query = (
             db.query(Session)
             .filter(Session.user_id == user_id)
             .order_by(Session.created_at.desc())
             .offset(skip)
             .limit(limit)
-            .all()
         )
+        if session_type:
+            query = query.filter(Session.session_type == session_type)
+        return query.all()
 
     @staticmethod
-    async def count_user_sessions(db: DBSession, user_id: int) -> int:
+    async def count_user_sessions(db: DBSession, user_id: int, session_type: Optional[str] = None) -> int:
         """统计用户的会话总数"""
-        return db.query(Session).filter(Session.user_id == user_id).count()
+        query = db.query(Session).filter(Session.user_id == user_id)
+        if session_type:
+            query = query.filter(Session.session_type == session_type)
+        return query.count()
 
     @staticmethod
     async def delete_session(db: DBSession, session_id: int, user_id: int):
@@ -55,11 +64,18 @@ class CRUDSession:
         ).first()
         if not session_obj:
             return False
+        if session_obj.session_type == 'chat':
+            # 需要删除关联的消息记录
+            pass
+        elif session_obj.session_type == 'review':
+            # 需要删除关联的审阅记录
+            pass
+
         try:
             db.delete(session_obj)
             db.commit()
             return True
-        except Exception:
+        except Exception as e:
             db.rollback()
             return False
 
@@ -78,7 +94,8 @@ class CRUDSession:
             db.commit()
             db.refresh(session_obj)
             return session_obj
-        except Exception:
+        except Exception as e:
+            print(f"更新会话标题失败: {e}")
             db.rollback()
             return None
 
