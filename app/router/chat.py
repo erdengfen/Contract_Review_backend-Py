@@ -25,7 +25,7 @@ from app.schemas.chat import ChatRequest
 router = APIRouter(tags=["合同聊天"])
 
 
-
+@router.post("/chat", summary="合同进行聊天")
 async def chat(
     request: ChatRequest,
     db: Session = Depends(get_db),
