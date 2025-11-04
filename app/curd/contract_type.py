@@ -9,17 +9,20 @@ from sqlalchemy.orm import Session
 from app.models import ContractType
 from app.schemas.contract_type import ContractTypeSchema
 
+
 async def get_contract_type(db: Session, contract_type_id: int):
     """
     根据合同类型ID获取合同类型
     """
     return db.query(ContractType).filter(ContractType.id == contract_type_id).first()
 
+
 async def get_contract_type_list(db: Session):
     """
     获取所有合同类型
     """
     return db.query(ContractType).filter(ContractType.is_active == 1).all()
+
 
 async def create_contract_type(db: Session, contract_type: ContractTypeSchema):
     """
@@ -51,14 +54,15 @@ async def update_contract_type(db: Session, contract_type_id: int, contract_type
     return db_contract_type
 
 
-async def inactive_contract_type(db: Session, contract_type_id: int):
+async def inactive_contract_type(db: Session, contract_type_id: int, is_active: int):
     """
-    停用合同类型
+    切换合同类型状态（激活/停用）
     """
     db_contract_type = db.query(ContractType).filter(ContractType.id == contract_type_id).first()
     if not db_contract_type:
         return None
-    db_contract_type.is_active = 0
+
+    db_contract_type.is_active = is_active
     db.commit()
     db.refresh(db_contract_type)
     return db_contract_type

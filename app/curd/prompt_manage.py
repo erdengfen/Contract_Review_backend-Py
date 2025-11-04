@@ -35,15 +35,13 @@ async  def create_system_prompt(db: DBSession, prompt: SystemPromptSchema):
     db.refresh(db_prompt)
     return db_prompt
 
-async  def update_system_prompt(db: DBSession, base_prompt_id: int, prompt: UpdateSystemPromptSchema):
+async  def update_system_prompt(db: DBSession, prompt_id: int, prompt: UpdateSystemPromptSchema):
     """
     更新基础 Prompt
     """
-    db_prompt = db.query(SystemPrompt).filter(SystemPrompt.id == base_prompt_id).first()
+    db_prompt = db.query(SystemPrompt).filter(SystemPrompt.id == prompt_id).first()
     if not db_prompt:
         return None
-    if prompt.contract_type_id is not None:
-        db_prompt.contract_type_id = prompt.contract_type_id
     if prompt.prompt_name is not None:
         db_prompt.prompt_name = prompt.prompt_name
     if prompt.prompt_content is not None:
