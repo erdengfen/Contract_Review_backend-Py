@@ -12,7 +12,6 @@ from pydantic import BaseModel, Field
 
 class ReviewTaskCreateRequest(BaseModel):
     """创建审阅任务请求"""
-    contract_id: int = Field(..., description="合同文件ID")
     session_id: int = Field(..., description="会话ID")
     stance: str = Field(..., description="审查立场（甲方/乙方）")
     intensity: str = Field(..., description="审查尺度（严格/标准/宽松）")
