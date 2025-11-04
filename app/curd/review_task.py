@@ -39,9 +39,21 @@ class CRUDReviewTask:
         return review_task
 
     @staticmethod
-    def get_review_task(db: DBSession, task_id: int) -> Optional[ReviewTask]:
-        """根据任务ID获取审阅任务"""
-        return db.query(ReviewTask).filter(ReviewTask.id == task_id).first()
+    async def get_review_task(db: DBSession, session_id: int) -> Optional[ReviewTask]:
+        """根据会话ID获取审阅任务"""
+        return db.query(ReviewTask).filter(ReviewTask.session_id == session_id).first()
+
+
+
+
+
+
+    # ------------------
+    # @staticmethod
+    # def get_review_task(db: DBSession, task_id: int) -> Optional[ReviewTask]:
+    #     """根据任务ID获取审阅任务"""
+    #     return db.query(ReviewTask).filter(ReviewTask.id == task_id).first()
+
     @staticmethod
     def get_review_user_task(db: DBSession, user_id: int,task_id: int) -> Optional[ReviewTask]:
         """根据用户ID获取用户发起的审阅任务"""
@@ -115,13 +127,20 @@ class CRUDReviewResult:
         db.commit()
         db.refresh(review_result)
         return review_result
+
     @staticmethod
-    def get_review_result(db: DBSession, result_id: int):
-        """根据结果ID获取审查结果"""
-        return db.query(ReviewResult).filter(ReviewResult.id == result_id).first()
-    @staticmethod
-    def get_review_task_results(db: DBSession, task_id: int) :
-        """根据任务ID获取审查结果列表"""
-        return db.query(ReviewResult).filter(
-            ReviewResult.task_id == task_id).order_by(
-            ReviewResult.index).all()
+    async def get_review_result(db: DBSession, task_id: int) -> Optional[ReviewResult]:
+        """根据任务ID获取审查结果"""
+        return db.query(ReviewResult).filter(ReviewResult.task_id == task_id).order_by(ReviewResult.index).all()
+
+    # -----------------------
+    # @staticmethod
+    # def get_review_result(db: DBSession, result_id: int):
+    #     """根据结果ID获取审查结果"""
+    #     return db.query(ReviewResult).filter(ReviewResult.id == result_id).first()
+    # @staticmethod
+    # def get_review_task_results(db: DBSession, task_id: int) :
+    #     """根据任务ID获取审查结果列表"""
+    #     return db.query(ReviewResult).filter(
+    #         ReviewResult.task_id == task_id).order_by(
+    #         ReviewResult.index).all()

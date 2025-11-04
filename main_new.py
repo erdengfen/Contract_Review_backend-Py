@@ -20,11 +20,11 @@ from  app.router import (user,
                          contract,
                          chat,
                          review_task,
-                         chat_session,
                          cas_auth,
                          contract_type,
                          prompt_manage,
-                         model_configs
+                         model_configs,
+                        session
                          )
 
 # 配置日志
@@ -83,7 +83,7 @@ async def shutdown_event():
 
 
 app.include_router(user.router, prefix="/api/user", tags=["用户管理"])
-app.include_router(chat_session.router, prefix="/api/chat_session", tags=["会话管理"])
+app.include_router(session.router, prefix="/api/session", tags=["会话管理"])
 app.include_router(contract.router, prefix="/api/contract", tags=["文件上传下载"])
 app.include_router(chat.router, prefix="/api/chat", tags=["合同聊天"])
 app.include_router(review_task.router, prefix="/api/review_task", tags=["合同审阅"])
