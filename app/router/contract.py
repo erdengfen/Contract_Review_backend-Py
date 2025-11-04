@@ -22,8 +22,9 @@ from app.middlewares.auth import optional_get_current_user
 from  app.schemas.base import GenericResponse
 from app.schemas.contract_file import UploadResponse
 from fastapi.responses import FileResponse
-
+from openai import AsyncClient
 from app.utils.document_parsing import docx2md, mk_pdf2docx
+from app.curd.model_configs import get_default_model_by_type
 
 router = APIRouter(tags=["合同管理"])
 """
@@ -52,27 +53,47 @@ async def upload_contract_file(
         with open(save_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
         # 识别合同类型
-        llm_client =  llm.init_llm()
+        model_config = await get_default_model_by_type(db, model_type="chat")
+
+        async_client = AsyncClient(
+            api_key=model_config.api_key,
+            base_url=model_config.api_endpoint
+        )
         if file.filename.split('.')[-1].lower() == "pdf":
             contract_content = docx2md(mk_pdf2docx(save_path, file.filename.replace('.pdf', '.docx')),                                       None)
         else:
             contract_content = docx2md(save_path, None)
-        contract_type =  llm_client.invoke(
-            [
-                SystemMessage(content="你是一个合同类型识别助手,你具有识别合同类型以及识别甲方乙方名称以及金额的能力"),
-                HumanMessage(content=f"""
+
+        messages = [
+            {
+                "role": "system",
+                "content": "你是一个合同类型识别助手, 能识别合同类型及甲乙方名称和金额。"
+            },
+            {
+                "role": "user",
+                "content": f"""
                 请你根据文档内容识别合同类型，以及甲乙方的名称
                 文档内容：{contract_content[:1000]}
                 返回格式如下:
                 甲方：{{甲方名称}}
                 乙方：{{乙方名称}}
                 金额：{{金额}}
-                
-                """)
-            ]
+                """
+            }
+        ]
+
+        response = await async_client.chat.completions.create(
+            model=model_config.model_name,
+            stream=False,
+            messages=messages,
+            temperature=model_config.temperature,
+            max_tokens=model_config.max_tokens,
+            top_p=model_config.top_p,
+            frequency_penalty=model_config.frequency_penalty,
+            presence_penalty=model_config.presence_penalty
         )
         # 解析合同类型
-        contract_type = contract_type.content
+        contract_type = response.choices[0].message.content
         party_a = contract_type.split("甲方：")[1].split("\n")[0].strip() if "甲方：" in contract_type else ""
         party_b = contract_type.split("乙方：")[1].strip() if "乙方：" in contract_type else ""
         amount = contract_type.split("金额：")[1].strip() if "金额：" in contract_type else ""

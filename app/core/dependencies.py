@@ -9,7 +9,6 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.mysql_db import Base, engine
 import app.models
-
 # 自动创建表结构
 Base.metadata.create_all(bind=engine)
 

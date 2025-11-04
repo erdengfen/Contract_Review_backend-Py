@@ -33,7 +33,7 @@ class UpdateSystemPromptSchema(BaseModel):
     """
     更新基础 Prompt 模型
     """
-    contract_type_id: Optional[int] =Field(None,description="合同类型id")
+    id: Optional[int] =Field(None,description="系统Prompt ID")
     prompt_name: Optional[str] = Field(None, description="Prompt 名称")
 
     prompt_content: Optional[str] = Field(None, description="Prompt 内容")

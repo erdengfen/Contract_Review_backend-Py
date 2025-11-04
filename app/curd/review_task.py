@@ -10,6 +10,7 @@ from typing import Optional, List, Type
 from sqlalchemy.orm import Session as DBSession
 from sqlalchemy import desc
 
+from app.curd.chat_session import CRUDSession
 from app.models.review import ReviewTask, ReviewResult
 from app.schemas.review_task import ReviewTaskCreateRequest
 
@@ -18,14 +19,16 @@ class CRUDReviewTask:
     """审阅任务CRUD操作"""
 
     @staticmethod
-    def create_review_task(
+    async def create_review_task(
         db: DBSession,
         user_id: int,
         request: ReviewTaskCreateRequest
     ) -> ReviewTask:
         """创建审阅任务"""
+
+        session=await CRUDSession.get_session(db, request.session_id)
         review_task = ReviewTask(
-            contract_id=request.contract_id,
+            contract_id=session.contract_id,
             session_id=request.session_id,
             user_id=user_id,
             stance=request.stance,
@@ -43,7 +46,15 @@ class CRUDReviewTask:
         """根据会话ID获取审阅任务"""
         return db.query(ReviewTask).filter(ReviewTask.session_id == session_id).first()
 
-
+    @staticmethod
+    async def delete_review_task(db: DBSession, task_id: int) -> bool:
+        """根据任务ID删除审阅任务"""
+        task = db.query(ReviewTask).filter(ReviewTask.id == task_id).first()
+        if task:
+            db.delete(task)
+            db.commit()
+            return True
+        return False
 
 
 
@@ -82,7 +93,7 @@ class CRUDReviewTask:
             limit
         ).all()
     @staticmethod
-    def update_task_status(
+    async def update_task_status(
         db: DBSession, 
         task_id: int, 
         status: str
@@ -103,7 +114,7 @@ class CRUDReviewResult:
     """审查结果CRUD操作"""
 
     @staticmethod
-    def create_review_result(
+    async def create_review_result(
             db: DBSession,
             session_id: int,
             task_id: int,
@@ -133,6 +144,16 @@ class CRUDReviewResult:
         """根据任务ID获取审查结果"""
         return db.query(ReviewResult).filter(ReviewResult.task_id == task_id).order_by(ReviewResult.index).all()
 
+    @staticmethod
+    async def delete_review_result(db: DBSession, task_id: int) -> bool:
+        """根据任务ID删除审查结果"""
+        results = db.query(ReviewResult).filter(ReviewResult.task_id == task_id).all()
+        if results:
+            for result in results:
+                db.delete(result)
+            db.commit()
+            return True
+        return False
     # -----------------------
     # @staticmethod
     # def get_review_result(db: DBSession, result_id: int):

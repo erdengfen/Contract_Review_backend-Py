@@ -46,7 +46,7 @@ async def create_system_prompt_api(prompt: SystemPromptSchema, db: Session = Dep
         msg="创建系统Prompt成功"
     )
 
-@router.post("/get_system_prompt_id", response_model=GenericResponse[dict],summary="根据Prompt ID获取系统Prompt")
+@router.post("/get_system_prompt_id", response_model=GenericResponse[SystemPromptResponse],summary="根据Prompt ID获取系统Prompt")
 async def get_system_prompt_id_api(
     contract_type_id: int = Query(..., description="合同类型 ID"),
     db: Session = Depends(get_db)
@@ -56,19 +56,24 @@ async def get_system_prompt_id_api(
         raise HTTPException(status_code=404, detail="System prompt not found")
     return GenericResponse(
         code=200,
-        data={"prompt_id": result},
+        data=result,
         msg="获取系统Prompt ID成功"
     )
 
 @router.post("/system_update", response_model=GenericResponse[SystemPromptResponse],summary="更新系统Prompt")
 async def update_system_prompt_api(
-    base_prompt_id: int = Query(..., description="基础 Prompt ID"),
     prompt: UpdateSystemPromptSchema = None,
     db: Session = Depends(get_db)
 ):
-    if prompt is None:
-        prompt = UpdateSystemPromptSchema()
-    result = await update_system_prompt(db, base_prompt_id, prompt)
+    """
+    更新系统Prompt
+    :param prompt: 更新系统Prompt参数
+    :param db: 数据库会话
+    :return: 更新后的系统Prompt
+    """
+    if prompt.id is None:
+        raise HTTPException(status_code=400, detail="System prompt ID is required")
+    result = await update_system_prompt(db, prompt.id, prompt)
     if not result:
         raise HTTPException(status_code=404, detail="System prompt not found")
     return GenericResponse(

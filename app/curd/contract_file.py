@@ -61,15 +61,15 @@ class CRUDContract:
         db.commit()
         db.refresh(new_file)
 
-        #调用llm解析合同金额，甲乙方
-        llm = await llm_manager.get_user_llm(user_id=user_id, db_session=db)
-        parsed_data = await ContractParser.extract_parties_with_llm(save_path, llm)
-
-        #将信息保存至数据库
-        new_file.party_a = parsed_data.get("party_a")
-        new_file.party_b = parsed_data.get("party_b")
-        new_file.contract_value = parsed_data.get("contract_value")
-        db.commit()
+        # #调用llm解析合同金额，甲乙方
+        # llm = await llm_manager.get_user_llm(user_id=user_id, db_session=db)
+        # parsed_data = await ContractParser.extract_parties_with_llm(save_path, llm)
+        #
+        # #将信息保存至数据库
+        # new_file.party_a = parsed_data.get("party_a")
+        # new_file.party_b = parsed_data.get("party_b")
+        # new_file.contract_value = parsed_data.get("contract_value")
+        # db.commit()
 
         # 构造文件访问 URL（静态映射路径）
         # 注意 URL 中中文或空格文件名要编码
@@ -82,9 +82,9 @@ class CRUDContract:
             file_path=new_file.file_path,
             file_type=new_file.file_type,
             file_url=file_url,
-            party_a=new_file.party_a,
-            party_b=new_file.party_b,
-            amount=new_file.amount,
+            party_a=party_a,
+            party_b=party_b,
+            amount=amount,
         )
     @staticmethod
     async def set_contract_type(db: DBSession, file_id: int, contract_type_id: int, review_position: int) -> bool:

@@ -12,7 +12,7 @@ from typing import List
 from sqlalchemy.orm import Session
 from app.schemas.base import GenericResponse
 from app.core.dependencies import get_db
-from app.schemas.contract_type import ContractTypeSchema, ContractTypeResponse
+from app.schemas.contract_type import ContractTypeSchema, ContractTypeResponse, ActivateContractType
 from app.curd.contract_type import (
     get_contract_type,
     create_contract_type,
@@ -83,15 +83,22 @@ async def update_existing_contract_type(
 
 
 # ------------------- 停用合同类型 -------------------
-@router.post("/inactive_contract_type", response_model=GenericResponse[ContractTypeResponse],summary="停用合同类型")
+@router.post("/activate_contract_type", response_model=GenericResponse[ContractTypeResponse],summary="停用合同类型")
 async def deactivate_contract_type(
-    contract_type_id: int = Query(..., description="要停用的合同类型ID"),
+        activate_contract_type: ActivateContractType,
     db: Session = Depends(get_db)
 ):
-    result = await inactive_contract_type(db, contract_type_id)
+    result = await inactive_contract_type(
+        db,
+        activate_contract_type.contract_type_id,
+        activate_contract_type.is_active)
     if not result:
         raise HTTPException(status_code=404, detail="Contract type not found")
+    if activate_contract_type.is_active == 0:
+        msg = "停用合同类型成功"
+    else:
+        msg = "激活合同类型成功"
     return GenericResponse(
         code=200,
-        msg="停用合同类型成功",
+        msg=msg,
         data=ContractTypeResponse.model_validate(result))

@@ -16,21 +16,14 @@ from sse_starlette.sse import EventSourceResponse
 from sqlalchemy.orm import Session as DBSession
 
 from app.middlewares.auth import get_current_user
-from app.schemas.base import GenericResponse
 from app.schemas.review_task import (
-    ReviewTaskCreateRequest,
-    ReviewTaskResponse,
-    # ReviewResultResponse,
-    # RiskItemResponse,
-    ReviewTaskListResponse, ReviewTaskDetailResponse, ReviewTaskSSEResponse,
-    # ReviewProgressResponse
+    ReviewTaskCreateRequest,ReviewTaskSSEResponse
 )
 from app.curd.review_task import CRUDReviewTask, CRUDReviewResult
 from app.curd.contract_file import CRUDContract
 from app.core.dependencies import get_db
 from app.models.user import User
 from app.services.contract_review import ContractReviewService
-from app.utils.document_parsing import docx2md, mk_pdf2docx
 from app.utils.mcp_client import MCPClient
 from app.utils.content_slicer import split_text_by_length
 from openai import AsyncClient
@@ -44,63 +37,69 @@ router = APIRouter(tags=["合同审阅"])
 """
 
 
-@router.post(
-        "/create",
-        summary="创建审阅任务",
-        response_model=GenericResponse[ReviewTaskResponse]
-)
-async def create_review(
-        request: ReviewTaskCreateRequest,
-        current_user: User = Depends(get_current_user),
-        db: DBSession = Depends(get_db)
-) -> GenericResponse[ReviewTaskResponse]:
-    """创建审阅任务"""
-    try:
-        # 创建会话
+# @router.post(
+#         "/create",
+#         summary="创建审阅任务",
+#         response_model=GenericResponse[ReviewTaskResponse]
+# )
+# async def create_review(
+#         request: ReviewTaskCreateRequest,
+#         current_user: User = Depends(get_current_user),
+#         db: DBSession = Depends(get_db)
+# ) -> GenericResponse[ReviewTaskResponse]:
+#     """创建审阅任务"""
+#     try:
+#         # 创建会话
+#
+#         review_task = CRUDReviewTask.create_review_task(db, current_user.id, request)
+#         return GenericResponse(
+#             code=200,
+#             msg="审阅任务创建成功",
+#             data=ReviewTaskResponse(
+#                 id=review_task.id,
+#                 contract_id=review_task.contract_id,
+#                 session_id=review_task.session_id,
+#                 user_id=review_task.user_id,
+#                 stance=review_task.stance,
+#                 intensity=review_task.intensity,
+#                 description=review_task.description,
+#                 status=review_task.status,
+#                 created_at=review_task.created_at,
+#                 completed_at=review_task.completed_at
+#             )
+#         )
+#     except Exception as e:
+#         logger.error(f"创建审阅任务失败: {e}")
+#         raise HTTPException(status_code=500, detail=f"创建审阅任务失败: {str(e)}")
 
-        review_task = CRUDReviewTask.create_review_task(db, current_user.id, request)
-        return GenericResponse(
-            code=200,
-            msg="审阅任务创建成功",
-            data=ReviewTaskResponse(
-                id=review_task.id,
-                contract_id=review_task.contract_id,
-                session_id=review_task.session_id,
-                user_id=review_task.user_id,
-                stance=review_task.stance,
-                intensity=review_task.intensity,
-                description=review_task.description,
-                status=review_task.status,
-                created_at=review_task.created_at,
-                completed_at=review_task.completed_at
-            )
-        )
-    except Exception as e:
-        logger.error(f"创建审阅任务失败: {e}")
-        raise HTTPException(status_code=500, detail=f"创建审阅任务失败: {str(e)}")
 
-class StartReviewTaskRequest(BaseModel):
-    task_id: int
 
 @router.post("/start_task",summary="启动审阅任务")
 async def start_task(
-        request: StartReviewTaskRequest,
+        request: ReviewTaskCreateRequest,
         current_user: User = Depends(get_current_user),
         db: DBSession = Depends(get_db)
 ):
     """启动审阅任务"""
-    async def event_generator():
-            review_task = CRUDReviewTask.get_review_user_task(
-                db,
-                current_user.id,
-                request.task_id)
-            if not review_task:
+    if not request.session_id:
+        raise HTTPException(status_code=400, detail="会话ID不能为空")
 
+    async def event_generator():
+            #  检查任务是否已经存在 存在进行删除覆盖
+            existing_task =await CRUDReviewTask.get_review_task(db, request.session_id)
+            if existing_task:
+                await CRUDReviewTask.delete_review_task(db, existing_task.id)
+                await CRUDReviewResult.delete_review_result(db, existing_task.id)
+            # 创建任务
+
+            review_task = await CRUDReviewTask.create_review_task(db, current_user.id, request)
+
+            if not review_task:
                 yield json.dumps(
                         ReviewTaskSSEResponse(
                         event="error",
                         data={"message": "任务不存在"}).model_dump(), ensure_ascii=False)
-            CRUDReviewTask.update_task_status(db, review_task.id, "processing")
+            await CRUDReviewTask.update_task_status(db, review_task.id, "processing")
             contract = await CRUDContract.get_contract_file(db, review_task.contract_id)
             mcp_client = MCPClient()
             await mcp_client.initialize()
@@ -131,12 +130,11 @@ async def start_task(
                     context = ""
                     if idx > 0:
                         context = f"这是第 {idx + 1} 个分块，前面已审阅 {idx} 个分块。"
-                    
                     modifications = await contract_review_service.review_contract(
                         async_client,model_config, chunk_content, review_task.stance, "", context
                     )
                     for j, modification in enumerate(modifications):
-                        review_result=CRUDReviewResult.create_review_result(
+                        review_result=await CRUDReviewResult.create_review_result(
                             db=db,
                             session_id=review_task.session_id,
                             task_id=review_task.id,
