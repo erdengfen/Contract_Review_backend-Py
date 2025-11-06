@@ -7,7 +7,7 @@ class RedisClient:
 
     def __new__(cls):
         if not cls._instance:
-            cls._instance = super().__new__(cls)
+            cls._instance = super().__new__(cls) #实际分配一个新对象的内存空间。若重写__new__而不写这句则不会创建对象
             # 初始化连接池（惰性加载）
             cls._pool = None
         return cls._instance
@@ -114,4 +114,3 @@ class RedisHandler:
         except Exception as e:
             print(f"Redis expire error: {e}")
             return False
-

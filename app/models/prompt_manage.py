@@ -44,7 +44,6 @@ class BasePrompt(Base):
     created_at = Column(TIMESTAMP, default=datetime.now, comment="创建时间")
     updated_at = Column(TIMESTAMP, default=datetime.now, onupdate=datetime.now, comment="更新时间")
 
-
 # --------------------个性化prompt------------------------------------------------
 class PromptOverrides(Base):
     """

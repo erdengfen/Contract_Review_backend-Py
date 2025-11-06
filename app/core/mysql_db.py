@@ -10,8 +10,6 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 
 from app.config.config import settings
 
-
 engine = create_engine(settings.database.database_url())
 
 Base = declarative_base()
-
