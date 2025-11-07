@@ -42,12 +42,12 @@ def test_review_task_flow():
         return
     
     upload_data = upload_response.json()
-    contract_id = upload_data["data"]["file_id"]
-    print(f" 文件上传成功，合同ID: {contract_id}")
-    
+    file_id = upload_data["data"]["file_id"]
+    print(f" 文件上传成功，合同ID: {file_id}")
+
     # 3. 创建审阅任务
     review_request = {
-        "contract_id": contract_id,
+        "file_id": file_id,
         "stance": "甲方",
         "intensity": "标准",
         "description": "请对合同进行专业审阅"

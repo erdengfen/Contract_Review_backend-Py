@@ -57,7 +57,7 @@ router = APIRouter(tags=["合同审阅"])
 #             msg="审阅任务创建成功",
 #             data=ReviewTaskResponse(
 #                 id=review_task.id,
-#                 contract_id=review_task.contract_id,
+#                 file_id=review_task.file_id,
 #                 session_id=review_task.session_id,
 #                 user_id=review_task.user_id,
 #                 stance=review_task.stance,
@@ -100,7 +100,7 @@ async def start_task(
                         event="error",
                         data={"message": "任务不存在"}).model_dump(), ensure_ascii=False)
             await CRUDReviewTask.update_task_status(db, review_task.id, "processing")
-            contract = await CRUDContract.get_contract_file(db, review_task.contract_id)
+            contract = await CRUDContract.get_contract_file(db, review_task.file_id)
             mcp_client = MCPClient()
             await mcp_client.initialize()
             contract_review_service = ContractReviewService(mcp_client)

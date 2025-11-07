@@ -22,7 +22,7 @@ class ReviewTaskResponse(BaseModel):
     """审阅任务响应"""
     id: int = Field(..., description="任务ID")
     session_id: int = Field(..., description="会话ID")
-    contract_id: int = Field(..., description="所属文件ID")
+    file_id: int = Field(..., description="所属文件ID")
     user_id: int = Field(..., description="发起用户ID")
     stance: str = Field(..., description="审查立场")
     intensity: str = Field(..., description="审查尺度")

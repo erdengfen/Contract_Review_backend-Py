@@ -14,13 +14,13 @@ from typing import Optional
 class CRUDSession:
 
     @staticmethod
-    async def create_session(db: DBSession, user_id: int, title: str, contract_id: Optional[int] = None,session_type:[str]='default'):
+    async def create_session(db: DBSession, user_id: int, title: str, file_id: Optional[int] = None,session_type:[str]='default'):
         """创建新会话"""
         new_session = Session(
             title=title,
             user_id=user_id,
             session_type=session_type,
-            contract_id=contract_id,
+            file_id=file_id,
             created_at=datetime.now(),
             updated_at=datetime.now()
         )

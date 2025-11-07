@@ -19,7 +19,7 @@ class ReviewTask(Base):
 
     id = Column(Integer, primary_key=True,comment="任务ID")
     session_id = Column(Integer,comment="会话ID")
-    contract_id = Column(Integer,comment="所属文件")
+    file_id = Column(Integer,comment="所属文件")
     user_id = Column(Integer,comment="发起用户")
     stance = Column(String(32),comment="审查立场")
     intensity = Column(String(32),comment="审查尺度")
@@ -32,7 +32,7 @@ class ReviewTask(Base):
         return {
             "id": self.id,
             "session_id": self.session_id,
-            "contract_id": self.contract_id,
+            "file_id": self.file_id,
             "user_id": self.user_id,
             "stance": self.stance,
             "intensity": self.intensity,
