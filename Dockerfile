@@ -1,5 +1,5 @@
 # 使用轻量化 Python 基础镜像
-FROM python:3.11
+FROM docker.xuanyuan.run/library/python:3.11.14
 
 # 设置工作目录
 WORKDIR /app
