@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.curd.signboard import get_review_trend, get_review_result, get_review_task_overview
 from app.core.dependencies import get_db
 from app.schemas.signboard import (OverviewResponse, RevisionsResponse,
-                                   ContractTypesResponse, TrendItem, DepartmentUsageItem)
+                                   ContractTypesResponse, TrendItem, DepartmentUsageItem, TrendsContractsRequest)
 
 from app.schemas.base import GenericResponse
 router = APIRouter()
@@ -53,7 +53,7 @@ async def get_contract_types(
 
 
 @router.post("/get_contract_count", response_model=GenericResponse[dict],
-             summary="获取合同类型统计（服务类合同，货物类合同，基建类合同）")
+             summary="获取合同类型统计")
 async def get_contract_count(
         db: Session = Depends(get_db),
         contract_type_id: int = Query(..., description="合同类型id")
@@ -66,17 +66,13 @@ async def get_contract_count(
     """
 
     contract_count = await get_contract_count(db, contract_type_id)
-    return GenericResponse(code=200, msg="获取合同类型统计（服务类合同，货物类合同，基建类合同）成功", data=contract_count)
+    return GenericResponse(code=200, msg="获取合同类型统计成功", data=contract_count)
 
 @router.get("/trends_contracts", response_model=GenericResponse[List[TrendItem]],
-            summary="获取合同审阅趋势（总数量，服务类合同，货物类合同，基建类合同，分天，周，月，年）")
+            summary="获取合同审阅趋势（总数量，指定合同类型数量，分天，周，月，年）")
 async def get_contract_trends(
         db: Session = Depends(get_db),
-        period: str = Query(..., regex="^(day|week|month|year)$"),
-    contract_type_ids: Optional[List[int]] = Query(None, description="合同类型id列表"),
-
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None
+        request: TrendsContractsRequest = Depends()
 ):
     """
     获取合同审阅趋势（总数量，服务类合同，货物类合同，基建类合同，分天，周，月，年）
@@ -86,7 +82,7 @@ async def get_contract_trends(
     :return:
     """
 
-    trends = await get_review_trend(db, period,contract_type_ids, start_date, end_date)
+    trends = await get_review_trend(db, request.period,request.contract_type_ids, request.start_date, request.end_date)
     return GenericResponse(code=200, msg="获取合同审阅趋势（总数量，服务类合同，货物类合同，基建类合同，分天，周，月，年）成功", data=trends)
 
 
