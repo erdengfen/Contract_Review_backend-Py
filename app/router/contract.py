@@ -5,7 +5,9 @@
 @Author  ：潘尚国
 @Date    ：2025/10/22 14:45 
 """
+import json
 import os
+import re
 import shutil
 
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -31,6 +33,33 @@ router = APIRouter(tags=["合同管理"])
 """
 
 
+def parse_contract_info(raw_output) -> dict:
+    pattern = r"```json\n(.*?)\n?```"
+    model_output=""
+    match = re.search(pattern, raw_output, re.DOTALL)
+    if match:
+        model_output = match.group(1)
+        print(model_output)
+    data = json.loads(model_output)
+    try:
+        party_a = data.get("party_a", "")
+        party_b = data.get("party_b", "")
+        amount = data.get("amount", "").replace("元", "")
+        def clean(val):
+            if not isinstance(val, str):
+                return ""
+            if "{未识别}" in val or len(val) > 300:
+                return ""
+            return val.strip()
+
+        return {
+            "party_a": clean(party_a),
+            "party_b": clean(party_b),
+            "amount": clean(amount)
+        }
+
+    except (json.JSONDecodeError, TypeError, AttributeError):
+        return {"party_a": "", "party_b": "", "amount": ""}
 @router.post("/upload", response_model=GenericResponse[UploadResponse], summary="上传合同文件")
 async def upload_contract_file(
     current_user=Depends(optional_get_current_user),
@@ -59,23 +88,50 @@ async def upload_contract_file(
             contract_content = docx2md(save_path, None)
         contract_type =  llm_client.invoke(
             [
-                SystemMessage(content="你是一个合同类型识别助手,你具有识别合同类型以及识别甲方乙方名称以及金额的能力"),
-                HumanMessage(content=f"""
-                请你根据文档内容识别合同类型，以及甲乙方的名称
-                文档内容：{contract_content[:1000]}
-                返回格式如下:
-                甲方：{{甲方名称}}
-                乙方：{{乙方名称}}
-                金额：{{金额}}
-                
-                """)
+                SystemMessage(content="""
+                你是一个专业的合同信息提取引擎，请严格遵守以下规则：
+
+                1. **仅处理合同类文档**。如果输入内容不是合同（如论文、通知、模板等），请返回：
+                ```json
+                {
+                    "party_a": "{未识别}", 
+                    "party_b": "{未识别}", 
+                    "amount": "{未识别}"
+                }
+                ```
+                2. **必须以纯 JSON 格式输出，且仅包含以下三个字段**：
+                   - "party_a": 甲方全称（字符串）
+                   - "party_b": 乙方全称（字符串）
+                   - "amount": 合同金额及单位（字符串，如 "50000元"）
+
+                3. **字段规则**：
+                   - 若无法识别某字段，值为 "{未识别}"
+                   - 不要包含任何额外字段、注释、markdown、换行或说明文字
+                   - 输出必须是合法 JSON，可被 Python `json.loads()` 解析
+
+                4. **禁止行为**：
+                   - 禁止输出非 JSON 内容（如“好的，结果如下：”）
+                   - 禁止推测、虚构信息
+                   - 禁止使用中文引号、单引号（必须双引号）
+
+                5. **正确示例**：
+                ```json
+                {
+                    "party_a": "华为技术有限公司", 
+                    "party_b": "中国移动通信集团", 
+                    "amount": "12500000元"
+                }
+                ```
+                """),
+                HumanMessage(content=f"请提取以下文档中的合同信息：\n\n{contract_content[:1200]}")
             ]
         )
         # 解析合同类型
-        contract_type = contract_type.content
-        party_a = contract_type.split("甲方：")[1].split("\n")[0].strip() if "甲方：" in contract_type else ""
-        party_b = contract_type.split("乙方：")[1].strip() if "乙方：" in contract_type else ""
-        amount = contract_type.split("金额：")[1].strip() if "金额：" in contract_type else ""
+        contract_type = parse_contract_info(contract_type.content)
+
+        party_a = contract_type["party_a"]
+        party_b = contract_type["party_b"]
+        amount = float(contract_type["amount"])
         upload_result =await CRUDContract.create_contract_file(
             db=db,
             user_id=current_user.id,
