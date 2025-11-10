@@ -3,6 +3,9 @@ import mimetypes
 import sys
 import urllib
 import uuid
+
+import fitz
+import pdfplumber
 import requests
 from docx.oxml import CT_P, CT_Tbl
 import docx
@@ -837,4 +840,40 @@ def mk_pdf2docx(pdf_path, docx_path):
     converter.close()
     return docx_path
 
-
+def extract_text_from_pdf_pdfplumber(file_path: str) -> str:
+    """使用pdfplumber提取PDF文本"""
+    try:
+        text = ""
+        with pdfplumber.open(file_path) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text() or ""
+                text += page_text + "\n"
+        return text.strip()
+    except Exception as e:
+        print(f"使用pdfplumber提取PDF文本失败: {e}")
+        raise
+def extract_text_from_pdf_pymupdf(file_path: str) -> str:
+    """使用PyMuPDF提取PDF文本"""
+    try:
+        text = ""
+        with fitz.open(file_path) as pdf:
+            for page_num in range(len(pdf)):
+                page = pdf[page_num]
+                page_text = page.get_text()
+                text += page_text + "\n"
+        return text.strip()
+    except Exception as e:
+        print(f"使用PyMuPDF提取PDF文本失败: {e}")
+        raise
+def extract_text_from_pdf(file_path: str) -> str:
+    """提取PDF文本，尝试多种方法"""
+    try:
+        # 先尝试pdfplumber
+        text = extract_text_from_pdf_pdfplumber(file_path)
+        if not text.strip():
+            # 如果提取结果为空，尝试PyMuPDF
+            text = extract_text_from_pdf_pymupdf(file_path)
+        return text
+    except Exception as e:
+        print(f"提取PDF文本失败: {e}")
+        raise

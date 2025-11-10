@@ -25,7 +25,7 @@ from  app.schemas.base import GenericResponse
 from app.schemas.contract_file import UploadResponse
 from fastapi.responses import FileResponse
 
-from app.utils.document_parsing import docx2md, mk_pdf2docx
+from app.utils.document_parsing import docx2md, mk_pdf2docx, extract_text_from_pdf
 
 router = APIRouter(tags=["合同管理"])
 """
@@ -60,6 +60,7 @@ def parse_contract_info(raw_output) -> dict:
 
     except (json.JSONDecodeError, TypeError, AttributeError):
         return {"party_a": "", "party_b": "", "amount": ""}
+
 @router.post("/upload", response_model=GenericResponse[UploadResponse], summary="上传合同文件")
 async def upload_contract_file(
     current_user=Depends(optional_get_current_user),
@@ -83,7 +84,7 @@ async def upload_contract_file(
         # 识别合同类型
         llm_client =  llm.init_llm()
         if file.filename.split('.')[-1].lower() == "pdf":
-            contract_content = docx2md(mk_pdf2docx(save_path, file.filename.replace('.pdf', '.docx')),                                       None)
+            contract_content = extract_text_from_pdf(save_path)
         else:
             contract_content = docx2md(save_path, None)
         contract_type =  llm_client.invoke(
