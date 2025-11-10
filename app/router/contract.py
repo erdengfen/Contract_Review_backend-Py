@@ -39,7 +39,7 @@ def parse_contract_info(raw_output) -> dict:
     match = re.search(pattern, raw_output, re.DOTALL)
     if match:
         model_output = match.group(1)
-        print(model_output)
+        # print(model_output)
     data = json.loads(model_output)
     try:
         party_a = data.get("party_a", "")
@@ -131,7 +131,8 @@ async def upload_contract_file(
 
         party_a = contract_type["party_a"]
         party_b = contract_type["party_b"]
-        amount = float(contract_type["amount"])
+        amount = float(contract_type["amount"]) if contract_type["amount"] else 0.0
+        print(party_a, party_b, amount)
         upload_result =await CRUDContract.create_contract_file(
             db=db,
             user_id=current_user.id,
