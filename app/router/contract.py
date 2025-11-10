@@ -44,7 +44,7 @@ def parse_contract_info(raw_output) -> dict:
     try:
         party_a = data.get("party_a", "")
         party_b = data.get("party_b", "")
-        amount = data.get("amount", "")
+        amount = data.get("amount", "").replace("元", "")
         def clean(val):
             if not isinstance(val, str):
                 return ""
@@ -92,12 +92,17 @@ async def upload_contract_file(
                 你是一个专业的合同信息提取引擎，请严格遵守以下规则：
 
                 1. **仅处理合同类文档**。如果输入内容不是合同（如论文、通知、模板等），请返回：
-                {"party_a": "{未识别}", "party_b": "{未识别}", "amount": "{未识别}"}
-
+                ```json
+                {
+                    "party_a": "{未识别}", 
+                    "party_b": "{未识别}", 
+                    "amount": "{未识别}"
+                }
+                ```
                 2. **必须以纯 JSON 格式输出，且仅包含以下三个字段**：
                    - "party_a": 甲方全称（字符串）
                    - "party_b": 乙方全称（字符串）
-                   - "amount": 合同金额及单位（字符串，如 "50万元"）
+                   - "amount": 合同金额及单位（字符串，如 "50000元"）
 
                 3. **字段规则**：
                    - 若无法识别某字段，值为 "{未识别}"
@@ -110,7 +115,13 @@ async def upload_contract_file(
                    - 禁止使用中文引号、单引号（必须双引号）
 
                 5. **正确示例**：
-                {"party_a": "华为技术有限公司", "party_b": "中国移动通信集团", "amount": "12,500,000元"}
+                ```json
+                {
+                    "party_a": "华为技术有限公司", 
+                    "party_b": "中国移动通信集团", 
+                    "amount": "12500000元"
+                }
+                ```
                 """),
                 HumanMessage(content=f"请提取以下文档中的合同信息：\n\n{contract_content[:1200]}")
             ]
@@ -120,7 +131,7 @@ async def upload_contract_file(
 
         party_a = contract_type["party_a"]
         party_b = contract_type["party_b"]
-        amount = contract_type["amount"]
+        amount = float(contract_type["amount"])
         upload_result =await CRUDContract.create_contract_file(
             db=db,
             user_id=current_user.id,

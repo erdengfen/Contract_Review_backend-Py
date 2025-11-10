@@ -40,7 +40,7 @@ class CRUDContract:
             save_path: str,
             party_a: str,
             party_b: str,
-            amount: str,
+            amount: float,
     ) -> UploadResponse:
         """上传并保存合同文件"""
 
