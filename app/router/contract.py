@@ -39,9 +39,10 @@ def parse_contract_info(raw_output) -> dict:
     match = re.search(pattern, raw_output, re.DOTALL)
     if match:
         model_output = match.group(1)
-        # print(model_output)
-    data = json.loads(model_output)
+        print(model_output)
+
     try:
+        data = json.loads(model_output)
         party_a = data.get("party_a", "")
         party_b = data.get("party_b", "")
         amount = data.get("amount", "").replace("元", "")
@@ -58,7 +59,7 @@ def parse_contract_info(raw_output) -> dict:
             "amount": clean(amount)
         }
 
-    except (json.JSONDecodeError, TypeError, AttributeError):
+    except Exception as e:
         return {"party_a": "", "party_b": "", "amount": ""}
 
 @router.post("/upload", response_model=GenericResponse[UploadResponse], summary="上传合同文件")
@@ -109,8 +110,8 @@ async def upload_contract_file(
                 3. **字段规则**：
                    - 若无法识别某字段，值为 "{未识别}"
                    - 不要包含任何额外字段、注释、markdown、换行或说明文字
-                   - 输出必须是合法 JSON，可被 Python `json.loads()` 解析
-
+                   - 输出必须是合法 JSON
+                   - 金额字段必须包含单位（"元"）
                 4. **禁止行为**：
                    - 禁止输出非 JSON 内容（如“好的，结果如下：”）
                    - 禁止推测、虚构信息
