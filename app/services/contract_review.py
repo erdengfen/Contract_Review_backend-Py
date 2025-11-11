@@ -94,6 +94,7 @@ class ContractReviewService:
 4. 【风险等级】- （高/中/低；含评分 0–100）
 5. 【修改后的内容】- 建议的修改内容
 6. 【修改理由】- 说明法律条文与商业合理性
+7. 【风险类型】- 风险类型（15字内)
 
 请确保分析专业、建议可行、格式规范。结合上下文信息，保持审阅的连贯性。
 """
@@ -226,13 +227,19 @@ class ContractReviewService:
                 if not reason_match:
                     reason_match = re.search(r'修改理由[：:\s]*([\s\S]*?)(?=\n*【|$)', content, re.DOTALL)
 
+                # 风险类型
+                type_match = re.search(r'【风险类型】[：:\s]*([\s\S]*?)(?=\n*【|$)', content, re.DOTALL)
+                if not type_match:
+                    type_match = re.search(r'风险类型[：:\s]*([\s\S]*?)(?=\n*【|$)', content, re.DOTALL)
+
                 modification = {
                     "position": f"修改点{point_num}",
                     "original_content": original_match.group(1).strip() if original_match else "未找到原文内容",
                     "risk_analysis": risk_match.group(1).strip() if risk_match else "未找到风险分析",
                     "risk_level": level_match.group(1).strip() if level_match else "未知",
                     "suggested_content": modified_match.group(1).strip() if modified_match else "未找到修改建议",
-                    "reason": reason_match.group(1).strip() if reason_match else "未找到修改理由"
+                    "reason": reason_match.group(1).strip() if reason_match else "未找到修改理由",
+                    "risk_type": type_match.group(1).strip() if type_match else "未找到风险类型"
                 }
 
                 modifications.append(modification)
@@ -253,6 +260,7 @@ class ContractReviewService:
                     "risk_level":"未知",
                     "suggested_content": "解析失败",
                     "reason":"解析失败",
+                    "risk_type":"解析失败",
                     "priority": "未知",
                     "action": "需要重新审阅"
                 }
