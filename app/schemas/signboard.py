@@ -34,3 +34,10 @@ class DepartmentUsageItem(BaseModel):
     contract_verification: int=Field(default=None,description="合同校验（个）")
     contract_comparison: int=Field(default=None,description="合同比对（个）")
     total: int=Field(default=None,description="合同类型总数量（个）")
+
+
+class TrendsContractsRequest(BaseModel):
+        period: str=Field(default=None,description="时间周期（day,week,month,year）")
+        contract_type_ids: Optional[List[int]]=Field(default=None,description="合同类型id列表")
+        start_date: Optional[str]=Field(default=None,description="开始日期（格式如 \"2025-10-01\"）")
+        end_date: Optional[str]=Field(default=None,description="结束日期（格式如 \"2025-10-31\"）")
