@@ -113,7 +113,10 @@ async def start_task(
                     contract_content = await mcp_client.extract_document_content(contract.file_path)
             """
             # 文件内容提取在上传接口，这里直接从数据库获取
-            contract_content=contract.contract_content
+            contract_content_path=contract.contract_content_path
+            with open(contract_content_path, "r", encoding="utf-8") as f:
+                contract_content = f.read()
+
             # 执行审阅
             model_config = await get_default_model_by_type(db, model_type="chat") 
 

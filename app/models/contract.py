@@ -8,6 +8,7 @@
 from datetime import datetime
 
 from sqlalchemy import Column, Integer, String, TIMESTAMP, Text, Float
+from sqlalchemy.dialects.mysql import LONGTEXT
 
 from app.core.mysql_db import Base
 
@@ -28,6 +29,7 @@ class ContractFile(Base):
     party_a = Column(String(64),comment="甲方")
     party_b = Column(String(64),comment="乙方")
     amount = Column(Float,comment="合同金额")
-    contract_content = Column(Text,comment="合同内容")
+    # contract_content = Column(LONGTEXT,comment="合同内容")
+    contract_content_path = Column(String(512),comment="合同内容存储路径")
     contract_type_id = Column(Integer,comment="合同类型ID")
     review_position = Column(Integer,comment="审查立场: 1甲方, 2乙方")

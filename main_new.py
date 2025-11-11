@@ -40,7 +40,8 @@ async def get_file(filename: str):
     return FileResponse(file_path)
 if not os.path.exists(settings.UPLOAD_DIR):
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-
+if not os.path.exists(settings.OSS_BUCKET_DIR):
+    os.makedirs(settings.OSS_BUCKET_DIR, exist_ok=True)
 # 添加CORS中间件
 app.add_middleware(
     CORSMiddleware,

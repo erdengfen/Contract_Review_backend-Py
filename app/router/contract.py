@@ -87,6 +87,7 @@ async def upload_contract_file(
             contract_content = extract_text_from_pdf(save_path)
         else:
             contract_content = docx2md(save_path, None)
+
         contract_type =  llm_client.invoke(
             [
                 SystemMessage(content="""
@@ -124,7 +125,7 @@ async def upload_contract_file(
                 }
                 ```
                 """),
-                HumanMessage(content=f"请提取以下文档中的合同信息：\n\n{contract_content[:1200]}")
+                HumanMessage(content=f"请提取以下文档中的合同信息：\n\n{contract_content[:5000]}")
             ]
         )
         # 解析合同类型
@@ -134,12 +135,20 @@ async def upload_contract_file(
         party_b = contract_type["party_b"]
         amount = float(contract_type["amount"]) if contract_type["amount"] else 0.0
         print(party_a, party_b, amount)
+        # 保存合同内容到文件
+        base_name = os.path.splitext(file.filename)[0]
+        new_filename = base_name + '.txt'
+        contract_content_path = os.path.join(settings.OSS_BUCKET_DIR, new_filename)
+        with open(contract_content_path, "w", encoding="utf-8") as f:
+            f.write(contract_content)
+
         upload_result =await CRUDContract.create_contract_file(
             db=db,
             user_id=current_user.id,
             file_name=file.filename,
             file_type=file.filename.split('.')[-1].lower(),
-            contract_content=contract_content,
+            # contract_content=contract_content,
+            contract_content_path=contract_content_path,
             save_path=save_path,
             party_a=party_a,
             party_b=party_b,
