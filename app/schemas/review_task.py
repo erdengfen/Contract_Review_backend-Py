@@ -16,6 +16,7 @@ class ReviewTaskCreateRequest(BaseModel):
     stance: str = Field(..., description="审查立场（甲方/乙方）")
     intensity: str = Field(..., description="审查尺度（严格/标准/宽松）")
     description: Optional[str] = Field(None, description="审查需求描述")
+    max_concurrent: Optional[int] = Field(5, description="最大并发数")
 
 
 class ReviewTaskResponse(BaseModel):
