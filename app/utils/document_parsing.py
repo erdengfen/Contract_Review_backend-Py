@@ -815,6 +815,34 @@ def docx2md(doc_path, file_options):
 
     return "".join(md_lines).strip()
 
+def docx2text(doc_path):
+    """从 .docx 文档中提取纯文本（不含格式、图片、超链接等）"""
+    doc = Document(doc_path)
+    full_text = []
+
+    def extract_paragraph_text(para):
+        return para.text.strip()
+
+    def extract_table_text(table):
+        table_text = []
+        for row in table.rows:
+            row_text = "\t".join(cell.text.strip() for cell in row.cells)
+            table_text.append(row_text)
+        return "\n".join(table_text)
+
+    for element in doc.element.body:
+        if element.tag.endswith('p'):  # Paragraph
+            para = Document._body._p(element, doc)
+            text = extract_paragraph_text(para)
+            if text:
+                full_text.append(text)
+        elif element.tag.endswith('tbl'):  # Table
+            tbl = Document._body._tbl(element, doc)
+            text = extract_table_text(tbl)
+            if text:
+                full_text.append(text)
+
+    return "\n".join(full_text)
 
 def doc2docx(input_path, output_path=None, keep_active=False):
     paths = resolve_paths(input_path, output_path)
