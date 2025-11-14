@@ -3,7 +3,8 @@ from fastapi import  Query
 from typing import List, Optional
 from datetime import date
 from sqlalchemy.orm import Session
-from app.curd.signboard import get_review_trend, get_review_result, get_review_task_overview
+from app.curd.signboard import get_review_trend, get_review_result, get_review_task_overview, get_contract_types, \
+    get_contract_count
 from app.core.dependencies import get_db
 from app.schemas.signboard import (OverviewResponse, RevisionsResponse,
                                    ContractTypesResponse, TrendItem, DepartmentUsageItem, TrendsContractsRequest)
@@ -25,7 +26,7 @@ async def get_overview(
     :return:
     """
     overview = await get_review_task_overview(db)
-    return GenericResponse(code=200, msg="获取合同审阅概览成功", data=overview)
+    return GenericResponse(code=200, msg="获取合同审阅概览成功", data=OverviewResponse(**overview))
 
 @router.get("/statistics_revisions", response_model=GenericResponse[RevisionsResponse],
             summary="获取修订风险点（个），修订错误点（个）")
@@ -36,11 +37,11 @@ async def get_revisions(
     :return:
     """
     revisions = await get_review_result(db)
-    return GenericResponse(code=200, msg="获取修订风险点（个），修订错误点（个）成功", data=revisions)
+    return GenericResponse(code=200, msg="获取修订风险点（个），修订错误点（个）成功", data=RevisionsResponse(**revisions))
 
 @router.get("/statistics_contract-types", response_model=GenericResponse[ContractTypesResponse],
             summary="获取合同类型统计（总数量，使用单位，使用人数）")
-async def get_contract_types(
+async def statistics_contract(
         db: Session = Depends(get_db),
 ):
     """
@@ -49,12 +50,12 @@ async def get_contract_types(
     """
 
     contract_types = await get_contract_types(db)
-    return GenericResponse(code=200, msg="获取合同类型统计（总数量，使用单位，使用人数）成功", data=contract_types)
+    return GenericResponse(code=200, msg="获取合同类型统计（总数量，使用单位，使用人数）成功", data=ContractTypesResponse(**contract_types))
 
 
 @router.post("/get_contract_count", response_model=GenericResponse[dict],
-             summary="获取合同类型统计")
-async def get_contract_count(
+             summary="获取指定合同类型统计")
+async def contract_count(
         db: Session = Depends(get_db),
         contract_type_id: int = Query(..., description="合同类型id")
 ):
@@ -75,15 +76,14 @@ async def get_contract_trends(
         request: TrendsContractsRequest = Depends()
 ):
     """
-    获取合同审阅趋势（总数量，服务类合同，货物类合同，基建类合同，分天，周，月，年）
-    :param period:
-    :param start_date:
-    :param end_date:
+    获取合同审阅趋势（总数量，指定合同类型数量，分天，周，月，年）
+    :param db:
+    :param request: TrendsContractsRequest
     :return:
     """
 
     trends = await get_review_trend(db, request.period,request.contract_type_ids, request.start_date, request.end_date)
-    return GenericResponse(code=200, msg="获取合同审阅趋势（总数量，服务类合同，货物类合同，基建类合同，分天，周，月，年）成功", data=trends)
+    return GenericResponse(code=200, msg="获取合同审阅趋势（总数量，服务类合同，货物类合同，基建类合同，分天，周，月，年）成功", data=[TrendItem(**item) for item in trends])
 
 
 

@@ -19,6 +19,7 @@ class ReviewTask(Base):
 
     id = Column(Integer, primary_key=True,comment="任务ID")
     session_id = Column(Integer,comment="会话ID")
+    type = Column(String(32),comment="类型: 审查:review, 校验:validate,比对:compare")
     file_id = Column(Integer,comment="所属文件")
     user_id = Column(Integer,comment="发起用户")
     stance = Column(String(32),comment="审查立场")
