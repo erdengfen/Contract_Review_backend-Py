@@ -36,6 +36,7 @@ dependencies = [
     "python-cas (>=1.6.0,<2.0.0)",
     "pymupdf (==1.26.4)",
     "pypdf2 (==3.0.1)",
+    "html2docx (>=1.6.0,<2.0.0)",
 ]
 
 

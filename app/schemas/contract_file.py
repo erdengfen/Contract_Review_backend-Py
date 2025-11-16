@@ -24,3 +24,7 @@ class UploadResponse(BaseModel):
     amount: Optional[float] = Field(..., description="合同金额")
     class Config:
         from_attributes = True
+
+class TransformContractRequest(BaseModel):
+    html_content: str = Field(..., description="合同文件HTML内容")
+    title: str = Field(..., description="合同标题")

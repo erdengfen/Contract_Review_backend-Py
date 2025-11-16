@@ -20,6 +20,7 @@ class ContractFile(Base):
 
     id = Column(Integer, primary_key=True,comment="合同ID")
     user_id = Column(Integer,comment="上传者")
+    type = Column(String(32),default="parsed",comment="合同类型（uploaded:上传/parsed：解析）")
     title = Column(String(256),comment="合同标题")
     file_path = Column(String(512),comment="存储路径")
     file_type = Column(String(16),comment="文件类型（pdf/docx）")

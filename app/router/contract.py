@@ -22,10 +22,10 @@ from app.curd.contract_file import CRUDContract, CRUDContractType
 from app.middlewares.auth import optional_get_current_user
 
 from  app.schemas.base import GenericResponse
-from app.schemas.contract_file import UploadResponse
+from app.schemas.contract_file import UploadResponse, TransformContractRequest
 from fastapi.responses import FileResponse
 
-from app.utils.document_parsing import docx2md, mk_pdf2docx, extract_text_from_pdf
+from app.utils.document_parsing import docx2md, mk_pdf2docx, extract_text_from_pdf, docx2text, doc2docx
 
 router = APIRouter(tags=["合同管理"])
 """
@@ -86,9 +86,13 @@ async def upload_contract_file(
         llm_client =  llm.init_llm()
         if file.filename.split('.')[-1].lower() == "pdf":
             contract_content = extract_text_from_pdf(save_path)
+        elif file.filename.split('.')[-1].lower() == "doc":
+            output_path = save_path.replace(".doc", ".docx")
+            doc2docx(input_path=save_path, output_path=output_path)
+            contract_content = docx2text(output_path)
         else:
-            contract_content = docx2md(save_path, None)
-
+            # contract_content = docx2md(save_path, None)
+            contract_content = docx2text(save_path)
         contract_type =  llm_client.invoke(
             [
                 SystemMessage(content="""
@@ -145,6 +149,7 @@ async def upload_contract_file(
 
         upload_result =await CRUDContract.create_contract_file(
             db=db,
+            type="parsed",
             user_id=current_user.id,
             file_name=file.filename,
             file_type=file.filename.split('.')[-1].lower(),
@@ -202,3 +207,41 @@ async def delete_contract_file(file_id: int, db: Session = Depends(get_db)):
     return GenericResponse(code=200, msg="文件删除成功")
 
 
+
+@router.post("/save_file", response_model=GenericResponse, summary="保存合同文件")
+async def save_contract_file(
+    current_user=Depends(optional_get_current_user),
+    db: Session = Depends(get_db),
+    file: UploadFile = File(...),
+):
+    """保存合同文件"""
+
+    if not current_user:
+        return GenericResponse(code=401, msg="用户未登录")
+
+    if not file.filename:
+        return GenericResponse(code=400, msg="文件名不能为空")
+    try:
+        save_dir = os.path.join(settings.UPLOAD_DIR, str(current_user.id))
+        os.makedirs(save_dir, exist_ok=True)
+
+        save_path = os.path.join(save_dir, file.filename)
+        with open(save_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+
+        upload_result = await CRUDContract.create_contract_file(
+            db=db,
+            type="uploaded",
+            user_id=current_user.id,
+            file_name=file.filename,
+            file_type=file.filename.split('.')[-1].lower(),
+            contract_content_path="",
+            save_path=save_path,
+            party_a="",
+            party_b="",
+            amount=0.0,
+        )
+        return GenericResponse(code=200, msg="上传成功", data=upload_result)
+
+    except Exception as e:
+        return GenericResponse(code=500, msg=f"文件上传失败: {str(e)}")

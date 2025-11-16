@@ -33,6 +33,7 @@ class CRUDContract:
     @staticmethod
     async def create_contract_file(
             db: DBSession,
+            type: str,
             user_id: int,
             file_name: str,
             file_type: str,
@@ -46,6 +47,7 @@ class CRUDContract:
         """上传并保存合同文件"""
 
         new_file = ContractFile(
+            type=type,
             user_id=user_id,
             title=file_name,
             # contract_content=contract_content,

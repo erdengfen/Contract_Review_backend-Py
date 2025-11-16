@@ -28,54 +28,13 @@ from app.utils.mcp_client import MCPClient
 from app.utils.content_slicer import split_text_by_length
 from openai import AsyncClient
 from app.curd.model_configs import get_default_model_by_type
-
+from asyncio import  Semaphore
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["合同审阅"])
 """
 合同审阅相关接口
 """
-
-
-# @router.post(
-#         "/create",
-#         summary="创建审阅任务",
-#         response_model=GenericResponse[ReviewTaskResponse]
-# )
-# async def create_review(
-#         request: ReviewTaskCreateRequest,
-#         current_user: User = Depends(get_current_user),
-#         db: DBSession = Depends(get_db)
-# ) -> GenericResponse[ReviewTaskResponse]:
-#     """创建审阅任务"""
-#     try:
-#         # 创建会话
-#
-#         review_task = CRUDReviewTask.create_review_task(db, current_user.id, request)
-#         return GenericResponse(
-#             code=200,
-#             msg="审阅任务创建成功",
-#             data=ReviewTaskResponse(
-#                 id=review_task.id,
-#                 file_id=review_task.file_id,
-#                 session_id=review_task.session_id,
-#                 user_id=review_task.user_id,
-#                 stance=review_task.stance,
-#                 intensity=review_task.intensity,
-#                 description=review_task.description,
-#                 status=review_task.status,
-#                 created_at=review_task.created_at,
-#                 completed_at=review_task.completed_at
-#             )
-#         )
-#     except Exception as e:
-#         logger.error(f"创建审阅任务失败: {e}")
-#         raise HTTPException(status_code=500, detail=f"创建审阅任务失败: {str(e)}")
-
-
-
-
-from asyncio import  Semaphore
 
 
 @router.post("/start_task", summary="启动审阅任务")
@@ -103,6 +62,12 @@ async def start_task(
                     data={"message": "任务不存在"}).model_dump(), ensure_ascii=False)
         await CRUDReviewTask.update_task_status(db, review_task.id, "processing")
         contract = await CRUDContract.get_contract_file(db, review_task.file_id)
+        if contract.type == "uploaded":
+            yield json.dumps(
+                ReviewTaskSSEResponse(event="error", data={"message": "当前文件为上传文件，不支持审阅"}).model_dump(),
+                ensure_ascii=False
+            )
+
         mcp_client = MCPClient()
         await mcp_client.initialize()
         contract_review_service = ContractReviewService(mcp_client)
@@ -190,5 +155,4 @@ async def start_task(
                 await asyncio.gather(*pending_tasks, return_exceptions=True)
 
     return EventSourceResponse(event_generator())
-
 
