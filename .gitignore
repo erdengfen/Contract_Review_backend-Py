@@ -21,11 +21,12 @@ logs/
 alembic.ini
 
 .idea
-*__pycache__
+__pycache__/
 /temp/
 
 /uv.lock
 /output/output.md
 /output/
+/data/
 
-.tar*
+*.tar

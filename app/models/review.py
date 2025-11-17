@@ -73,4 +73,3 @@ class ReviewResult(Base):
             "is_accepted": self.is_accepted,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
-

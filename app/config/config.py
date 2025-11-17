@@ -54,8 +54,8 @@ class DatabaseConfig(BaseModel):
 class RedisConfig(BaseModel):
     host: str = Field("localhost", description="Redis主机地址")
     port: int = Field(6379, description="Redis端口")
-    db: int = Field(0, description="Redis数据库索引")
-    password: str = Field(None, description="Redis密码")
+    db: int = Field(10, description="Redis数据库索引")
+    # password: str = Field("chongqinglingdong123456", description="Redis密码")
     decode_responses: bool = Field(True, description="是否解码Redis响应")
     max_connections: int = Field(20, description="Redis最大连接数")
     socket_connect_timeout: int = Field(5, description="Redis连接超时时间（秒）")

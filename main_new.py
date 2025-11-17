@@ -12,6 +12,7 @@ from starlette.staticfiles import StaticFiles
 
 from app.core.config import APP_NAME, APP_VERSION
 from app.config.config import settings
+from app.core.global_init import llm_manager, redis_handler
 
 from app.middlewares.auth import verify_token
 from fastapi.responses import FileResponse
@@ -26,6 +27,7 @@ from  app.router import (user,
                         session,
                         signboard
                          )
+
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

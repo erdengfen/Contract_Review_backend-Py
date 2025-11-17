@@ -28,7 +28,6 @@ class SystemPrompt(Base):
     updated_at = Column(TIMESTAMP, default=datetime.now, onupdate=datetime.now, comment="更新时间")
 
 
-
 class BasePrompt(Base):
     """
     机构prompt表主要记录重写后的prompt文本
@@ -43,7 +42,6 @@ class BasePrompt(Base):
     is_override = Column(Integer,default=0,comment="是否重写基础prompt")
     created_at = Column(TIMESTAMP, default=datetime.now, comment="创建时间")
     updated_at = Column(TIMESTAMP, default=datetime.now, onupdate=datetime.now, comment="更新时间")
-
 
 # --------------------个性化prompt------------------------------------------------
 class PromptOverrides(Base):

@@ -33,6 +33,7 @@ default_exclude_paths = [
     "/api/user/login",
     "/api/user/cas_login",
     "/api/user/cas_callback",
+    "/api/contract/upload",
     "/login/",
     "/logout/",
         "/cas_callback"

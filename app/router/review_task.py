@@ -156,3 +156,4 @@ async def start_task(
 
     return EventSourceResponse(event_generator())
 
+

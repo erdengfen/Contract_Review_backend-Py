@@ -25,10 +25,10 @@ from app.middlewares.auth import create_access_token, jwt_config
 router = APIRouter(tags=["CAS认证"])
 
 
-async def delete_file_after_delay(file_path, delay_seconds):
-    await asyncio.sleep(delay_seconds)
-    if os.path.exists(file_path):
-        os.remove(file_path)
+# async def delete_file_after_delay(file_path, delay_seconds):
+#     await asyncio.sleep(delay_seconds)
+#     if os.path.exists(file_path):
+#         os.remove(file_path)
 
 
 def _build_service_url(request: Request) -> str:
@@ -51,13 +51,13 @@ def _build_frontend_redirect_url(request: Request, token: str) -> str:
 
 def _get_cas_client(service_url: str) -> CASClient:
     return CASClient(
-        server_url="https://ids.cqupt.edu.cn/authserver/login",
+        server_url="https://ids.cqupt.edu.cn/authserver",
         service_url=service_url,
         version=3,
     )
 
 
-@router.get("/login/")
+@router.get("/login")
 async def login(request: Request):
     service_url = _build_service_url(request)
     cas_client = _get_cas_client(service_url)

@@ -196,19 +196,20 @@ class ContractReviewService:
             )
             review_result = response.choices[0].message.content
             modifications = self._parse_review_result(review_result)
+
             return modifications
-
+            
         except Exception as e:
-            logger.error(f"合同审阅失败: {e}")
+            logger.error(f" 合同审阅失败: {e}")
             return []
-
+    
     def _parse_review_result(self, review_result: str) -> List[Dict[str, Any]]:
         """解析审阅结果，提取修改点信息"""
         modifications = []
-
+        
         try:
             logger.info(f" 开始解析审阅结果，原始内容长度: {len(review_result)}")
-
+            
             # 多种格式的匹配模式
             patterns = [
                 # 模式1: 【修改点X】格式
@@ -222,32 +223,32 @@ class ContractReviewService:
                 # 模式5: 通用标题格式
                 r'[#]*\s*修改点(\d+)[^\n]*\n(.*?)(?=[#]*\s*修改点\d+|$)'
             ]
-
+            
             matches = []
             for pattern in patterns:
                 matches = re.findall(pattern, review_result, re.DOTALL)
                 if matches:
                     logger.info(f" 使用模式匹配到 {len(matches)} 个修改点")
                     break
-
+            
             if not matches:
                 # 如果没有匹配到任何模式，尝试更宽松的匹配
                 logger.warning("⚠ 未匹配到标准格式，尝试宽松匹配")
-
+                
                 # 尝试匹配包含"原文"、"风险"、"修改"等关键词的段落
                 sections = re.split(r'\n\s*\n', review_result)
                 current_mod = None
-
+                
                 for section in sections:
                     section = section.strip()
                     if not section:
                         continue
-
+                        
                     # 检查是否是新的修改点
                     if re.search(r'修改点\s*(\d+)', section, re.IGNORECASE):
                         if current_mod:
                             modifications.append(current_mod)
-
+                        
                         match = re.search(r'修改点\s*(\d+)', section, re.IGNORECASE)
                         current_mod = {
                             "position": f"修改点{match.group(1)}",
@@ -255,7 +256,7 @@ class ContractReviewService:
                             "risk_analysis": "",
                             "suggested_content": ""
                         }
-
+                    
                     # 提取内容
                     if current_mod:
                         if re.search(r'原文', section, re.IGNORECASE):
@@ -264,7 +265,7 @@ class ContractReviewService:
                             current_mod["risk_analysis"] = section
                         elif re.search(r'修改', section, re.IGNORECASE):
                             current_mod["suggested_content"] = section
-
+                
                 if current_mod:
                     modifications.append(current_mod)
 
@@ -273,35 +274,33 @@ class ContractReviewService:
                 point_num = match[0]
                 content = match[1].strip()
                 # 提取原文、风险分析、修改后内容
-                original_match = re.search(
-                    r'【?\s*原文\s*】?[：:\s]*([\s\S]*?)(?=【?\s*风险分析\s*】?|【?\s*风险等级\s*】?|【?\s*修改后的内容\s*】?|$)',
-                    content, re.DOTALL)
+                original_match = re.search(r'【?\s*原文\s*】?[：:\s]*([\s\S]*?)(?=【?\s*风险分析\s*】?|【?\s*风险等级\s*】?|【?\s*修改后的内容\s*】?|$)', content, re.DOTALL)
                 if not original_match:
                     original_match = re.search(r'原文[：:]\s*(.*?)(?=风险|修改)', content, re.DOTALL)
-
-                risk_match = re.search(
-                    r'【?\s*风险分析\s*】?[：:\s]*([\s\S]*?)(?=【?\s*风险等级\s*】?|【?\s*修改后的内容\s*】?|$)', content,
-                    re.DOTALL)
+                
+                risk_match = re.search(r'【?\s*风险分析\s*】?[：:\s]*([\s\S]*?)(?=【?\s*风险等级\s*】?|【?\s*修改后的内容\s*】?|$)', content, re.DOTALL)
                 if not risk_match:
                     risk_match = re.search(r'风险[：:]\s*(.*?)(?=修改)', content, re.DOTALL)
-
-                modified_match = re.search(r'【?\s*修改后的内容\s*】?[：:\s]*([\s\S]*?)(?=【?\s*修改理由\s*】?|$)', content,
-                                           re.DOTALL)
+                
+                modified_match = re.search(r'【?\s*修改后的内容\s*】?[：:\s]*([\s\S]*?)(?=【?\s*修改理由\s*】?|$)', content, re.DOTALL)
                 if not modified_match:
                     modified_match = re.search(r'修改[：:]\s*(.*?)(?=\n|$)', content, re.DOTALL)
 
                 # 风险等级
 
-                level_match = re.search(r'【风险等级】[：:\s]*([\s\S]*?)(?=【修改后的内容】|【修改理由】|$)', content,
-                                        re.DOTALL)
+                level_match = re.search(r'【风险等级】[：:\s]*([\s\S]*?)(?=【修改后的内容】|【修改理由】|$)', content, re.DOTALL)
                 if not level_match:
-                    level_match = re.search(r'风险等级[：:\s]*([\s\S]*?)(?=【修改后的内容】|修改|【修改理由】|$)', content,
-                                            re.DOTALL)
+                    level_match = re.search(r'风险等级[：:\s]*([\s\S]*?)(?=【修改后的内容】|修改|【修改理由】|$)', content, re.DOTALL)
 
                 # 修改理由
                 reason_match = re.search(r'【修改理由】[：:\s]*([\s\S]*?)(?=\n*【|$)', content, re.DOTALL)
                 if not reason_match:
                     reason_match = re.search(r'修改理由[：:\s]*([\s\S]*?)(?=\n*【|$)', content, re.DOTALL)
+
+                # 风险类型
+                type_match = re.search(r'【风险类型】[：:\s]*([\s\S]*?)(?=\n*【|$)', content, re.DOTALL)
+                if not type_match:
+                    type_match = re.search(r'风险类型[：:\s]*([\s\S]*?)(?=\n*【|$)', content, re.DOTALL)
 
                 modification = {
                     "position": f"修改点{point_num}",
@@ -309,7 +308,8 @@ class ContractReviewService:
                     "risk_analysis": risk_match.group(1).strip() if risk_match else "未找到风险分析",
                     "risk_level": level_match.group(1).strip() if level_match else "未知",
                     "suggested_content": modified_match.group(1).strip() if modified_match else "未找到修改建议",
-                    "reason": reason_match.group(1).strip() if reason_match else "未找到修改理由"
+                    "reason": reason_match.group(1).strip() if reason_match else "未找到修改理由",
+                    "risk_type": type_match.group(1).strip() if type_match else "未找到风险类型"
                 }
 
                 modifications.append(modification)
@@ -327,9 +327,10 @@ class ContractReviewService:
                     "position": "解析错误",
                     "original_content": "解析失败",
                     "risk_analysis": "解析失败",
-                    "risk_level": "未知",
+                    "risk_level":"未知",
                     "suggested_content": "解析失败",
-                    "reason": "解析失败",
+                    "reason":"解析失败",
+                    "risk_type":"解析失败",
                     "priority": "未知",
                     "action": "需要重新审阅"
                 }
