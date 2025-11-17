@@ -15,6 +15,8 @@
 
 注意：此代码依赖 spire.doc / spire.pdf 的 Python 封装（与原代码一致）。
 """
+import pprint
+import traceback
 from dataclasses import dataclass, asdict
 from typing import List, Tuple, Optional, Dict, Any
 import os
@@ -43,159 +45,159 @@ def _unique_path(input_path: str, suffix: str, ext: str) -> str:
     return os.path.join("./output", f"{base}_{suffix}_{uuid.uuid4().hex[:8]}{ext}")
 
 
-class PdfProcessor:
-    """处理 PDF：添加批注/高亮、按日志更新批注、用覆盖注释方式替换文本
-    保持原接口兼容性：返回 (output_path, log_path, count) 或单一路径。
-    """
-
-    @staticmethod
-    def add_comments_and_highlight(input_path: str, rules: List[Rule], author: str) -> Tuple[str, str, int]:
-        doc = PdfDocument()
-        try:
-            doc.LoadFromFile(input_path)
-            results = []
-            count = 0
-
-            for page_index in range(doc.Pages.Count):
-                page = doc.Pages.get_Item(page_index)
-                finder = PdfTextFinder(page)
-                finder.Options.Parameter = TextFindParameter.WholeWord
-
-                for rule in rules:
-                    keyword = rule.keyword
-                    comment_text = rule.comment
-                    color = rule.color or (255, 255, 0)
-
-                    fragments = finder.Find(keyword)
-                    if not fragments:
-                        continue
-
-                    for fragment in fragments:
-                        for rect in fragment.Bounds:
-                            annotation = PdfTextMarkupAnnotation(author, comment_text, rect)
-                            annotation.TextMarkupType = PdfTextMarkupAnnotationType.Highlight
-                            annotation.TextMarkupColor = PdfRGBColor(color[0], color[1], color[2])
-                            page.AnnotationsWidget.Add(annotation)
-
-                            results.append({
-                                "keyword": keyword,
-                                "comment": comment_text,
-                                "page": page_index + 1,
-                                "x": rect.Left,
-                                "y": rect.Top,
-                                "type": "pdf"
-                            })
-                            count += 1
-
-            output_path = _unique_path(input_path, "标注", ".pdf")
-            _ensure_output_dir(output_path)
-            doc.SaveToFile(output_path)
-
-            # 写日志
-            log_path = _unique_path(input_path, "标注日志", ".json")
-            _ensure_output_dir(log_path)
-            with open(log_path, "w", encoding="utf-8") as f:
-                json.dump(results, f, ensure_ascii=False, indent=4)
-
-            return output_path, log_path, count
-        finally:
-            try:
-                doc.Dispose()
-            except Exception:
-                pass
-
-    @staticmethod
-    def update_comments_by_log(input_path: str, log_path: str, updated_comment_text: Optional[str] = None) -> str:
-        doc = PdfDocument()
-        try:
-            doc.LoadFromFile(input_path)
-            with open(log_path, "r", encoding="utf-8") as f:
-                logs = json.load(f)
-
-            updated = 0
-            # 构建快速查找集合：按 (page, comment_text)
-            log_map = {(item["page"], item["comment"]): item for item in logs}
-
-            for page_index in range(doc.Pages.Count):
-                page = doc.Pages.get_Item(page_index)
-                to_remove = []
-                to_add = []
-
-                for ai in range(page.AnnotationsWidget.Count):
-                    annotation = page.AnnotationsWidget.get_Item(ai)
-                    # 有的注释对象可能不是文本标注
-                    if not isinstance(annotation, PdfTextMarkupAnnotation):
-                        continue
-
-                    key = (page_index + 1, annotation.Text)
-                    if key in log_map:
-                        # 记录删除并重新创建
-                        to_remove.append(annotation)
-                        new_text = updated_comment_text or annotation.Text
-                        new_annotation = PdfTextMarkupAnnotation(annotation.Author, new_text, annotation.Bounds[0])
-                        new_annotation.TextMarkupType = annotation.TextMarkupType
-                        new_annotation.TextMarkupColor = annotation.TextMarkupColor
-                        to_add.append(new_annotation)
-                        updated += 1
-
-                # 批量删除/添加
-                for ann in to_remove:
-                    try:
-                        page.AnnotationsWidget.Remove(ann)
-                    except Exception:
-                        pass
-                for ann in to_add:
-                    page.AnnotationsWidget.Add(ann)
-
-            output_path = _unique_path(input_path, "批注已更新", ".pdf")
-            _ensure_output_dir(output_path)
-            doc.SaveToFile(output_path)
-            return output_path
-        finally:
-            try:
-                doc.Dispose()
-            except Exception:
-                pass
-
-    @staticmethod
-    def replace_text_by_keyword(input_path: str, rules: List[Rule], replacement_template: str = "{old_text}（已修订）") -> str:
-        doc = PdfDocument()
-        try:
-            doc.LoadFromFile(input_path)
-            replace_count = 0
-
-            for page_index in range(doc.Pages.Count):
-                page = doc.Pages.get_Item(page_index)
-                finder = PdfTextFinder(page)
-
-                for rule in rules:
-                    keyword = rule.keyword
-                    fragments = finder.Find(keyword)
-                    if not fragments:
-                        continue
-
-                    for fragment in fragments:
-                        rect = fragment.Bounds[0]
-                        overlay_annotation = PdfTextMarkupAnnotation(
-                            "系统",
-                            replacement_template.format(old_text=keyword),
-                            rect
-                        )
-                        overlay_annotation.TextMarkupType = PdfTextMarkupAnnotationType.Highlight
-                        overlay_annotation.TextMarkupColor = PdfRGBColor(255, 255, 0)
-                        page.AnnotationsWidget.Add(overlay_annotation)
-                        replace_count += 1
-
-            output_path = _unique_path(input_path, "文本已替换", ".pdf")
-            _ensure_output_dir(output_path)
-            doc.SaveToFile(output_path)
-            print(f"PDF 已替换 {replace_count} 处文本（以高亮标注替代）")
-            return output_path
-        finally:
-            try:
-                doc.Dispose()
-            except Exception:
-                pass
+# class PdfProcessor:
+#     """处理 PDF：添加批注/高亮、按日志更新批注、用覆盖注释方式替换文本
+#     保持原接口兼容性：返回 (output_path, log_path, count) 或单一路径。
+#     """
+#
+#     @staticmethod
+#     def add_comments_and_highlight(input_path: str, rules: List[Rule], author: str) -> Tuple[str, str, int]:
+#         doc = PdfDocument()
+#         try:
+#             doc.LoadFromFile(input_path)
+#             results = []
+#             count = 0
+#
+#             for page_index in range(doc.Pages.Count):
+#                 page = doc.Pages.get_Item(page_index)
+#                 finder = PdfTextFinder(page)
+#                 finder.Options.Parameter = TextFindParameter.WholeWord
+#
+#                 for rule in rules:
+#                     keyword = rule.keyword
+#                     comment_text = rule.comment
+#                     color = rule.color or (255, 255, 0)
+#
+#                     fragments = finder.Find(keyword)
+#                     if not fragments:
+#                         continue
+#
+#                     for fragment in fragments:
+#                         for rect in fragment.Bounds:
+#                             annotation = PdfTextMarkupAnnotation(author, comment_text, rect)
+#                             annotation.TextMarkupType = PdfTextMarkupAnnotationType.Highlight
+#                             annotation.TextMarkupColor = PdfRGBColor(color[0], color[1], color[2])
+#                             page.AnnotationsWidget.Add(annotation)
+#
+#                             results.append({
+#                                 "keyword": keyword,
+#                                 "comment": comment_text,
+#                                 "page": page_index + 1,
+#                                 "x": rect.Left,
+#                                 "y": rect.Top,
+#                                 "type": "pdf"
+#                             })
+#                             count += 1
+#
+#             output_path = _unique_path(input_path, "标注", ".pdf")
+#             _ensure_output_dir(output_path)
+#             doc.SaveToFile(output_path)
+#
+#             # 写日志
+#             log_path = _unique_path(input_path, "标注日志", ".json")
+#             _ensure_output_dir(log_path)
+#             with open(log_path, "w", encoding="utf-8") as f:
+#                 json.dump(results, f, ensure_ascii=False, indent=4)
+#
+#             return output_path, log_path, count
+#         finally:
+#             try:
+#                 doc.Dispose()
+#             except Exception:
+#                 pass
+#
+#     @staticmethod
+#     def update_comments_by_log(input_path: str, log_path: str, updated_comment_text: Optional[str] = None) -> str:
+#         doc = PdfDocument()
+#         try:
+#             doc.LoadFromFile(input_path)
+#             with open(log_path, "r", encoding="utf-8") as f:
+#                 logs = json.load(f)
+#
+#             updated = 0
+#             # 构建快速查找集合：按 (page, comment_text)
+#             log_map = {(item["page"], item["comment"]): item for item in logs}
+#
+#             for page_index in range(doc.Pages.Count):
+#                 page = doc.Pages.get_Item(page_index)
+#                 to_remove = []
+#                 to_add = []
+#
+#                 for ai in range(page.AnnotationsWidget.Count):
+#                     annotation = page.AnnotationsWidget.get_Item(ai)
+#                     # 有的注释对象可能不是文本标注
+#                     if not isinstance(annotation, PdfTextMarkupAnnotation):
+#                         continue
+#
+#                     key = (page_index + 1, annotation.Text)
+#                     if key in log_map:
+#                         # 记录删除并重新创建
+#                         to_remove.append(annotation)
+#                         new_text = updated_comment_text or annotation.Text
+#                         new_annotation = PdfTextMarkupAnnotation(annotation.Author, new_text, annotation.Bounds[0])
+#                         new_annotation.TextMarkupType = annotation.TextMarkupType
+#                         new_annotation.TextMarkupColor = annotation.TextMarkupColor
+#                         to_add.append(new_annotation)
+#                         updated += 1
+#
+#                 # 批量删除/添加
+#                 for ann in to_remove:
+#                     try:
+#                         page.AnnotationsWidget.Remove(ann)
+#                     except Exception:
+#                         pass
+#                 for ann in to_add:
+#                     page.AnnotationsWidget.Add(ann)
+#
+#             output_path = _unique_path(input_path, "批注已更新", ".pdf")
+#             _ensure_output_dir(output_path)
+#             doc.SaveToFile(output_path)
+#             return output_path
+#         finally:
+#             try:
+#                 doc.Dispose()
+#             except Exception:
+#                 pass
+#
+#     @staticmethod
+#     def replace_text_by_keyword(input_path: str, rules: List[Rule], replacement_template: str = "{old_text}（已修订）") -> str:
+#         doc = PdfDocument()
+#         try:
+#             doc.LoadFromFile(input_path)
+#             replace_count = 0
+#
+#             for page_index in range(doc.Pages.Count):
+#                 page = doc.Pages.get_Item(page_index)
+#                 finder = PdfTextFinder(page)
+#
+#                 for rule in rules:
+#                     keyword = rule.keyword
+#                     fragments = finder.Find(keyword)
+#                     if not fragments:
+#                         continue
+#
+#                     for fragment in fragments:
+#                         rect = fragment.Bounds[0]
+#                         overlay_annotation = PdfTextMarkupAnnotation(
+#                             "系统",
+#                             replacement_template.format(old_text=keyword),
+#                             rect
+#                         )
+#                         overlay_annotation.TextMarkupType = PdfTextMarkupAnnotationType.Highlight
+#                         overlay_annotation.TextMarkupColor = PdfRGBColor(255, 255, 0)
+#                         page.AnnotationsWidget.Add(overlay_annotation)
+#                         replace_count += 1
+#
+#             output_path = _unique_path(input_path, "文本已替换", ".pdf")
+#             _ensure_output_dir(output_path)
+#             doc.SaveToFile(output_path)
+#             print(f"PDF 已替换 {replace_count} 处文本（以高亮标注替代）")
+#             return output_path
+#         finally:
+#             try:
+#                 doc.Dispose()
+#             except Exception:
+#                 pass
 
 
 class DocProcessor:
@@ -414,8 +416,48 @@ class DocProcessor:
 
 #简易使用示例（保留为注释）
 if __name__ == '__main__':
-    pdf_rules = [Rule('网站建设', '此处需明确网站建设的技术要求'), Rule('验收', '需补充验收标准和责任方')]
-    PdfProcessor.add_comments_and_highlight('合同.pdf', pdf_rules, author='pan')
+    # pdf_rules = [Rule('网站建设', '此处需明确网站建设的技术要求'), Rule('验收', '需补充验收标准和责任方')]
+    # PdfProcessor.add_comments_and_highlight('合同.pdf', pdf_rules, author='pan')
 
-    doc_rules = [Rule('违约金', '违约金说明', author='pan')]
-    DocProcessor.add_comments_and_highlight_textRange('合同.docx', doc_rules)
+    # doc_rules = [Rule('违约金', '违约金说明', author='pan')]
+    # DocProcessor.add_comments_and_highlight_textRange('../../data/校园主页升级改版服务合同.docx', doc_rules)
+    input_path = "../../data/校园主页升级改版服务合同.docx"
+
+    print("cwd:", os.getcwd())
+    print("input exists:", os.path.exists(input_path), os.path.abspath(input_path))
+
+    doc_rules = [
+        Rule(keyword='违约金', comment='请明确违约金计提方式', author='pan'),
+        Rule(keyword='验收', comment='补充验收标准和责任方', author='pan'),
+    ]
+
+    try:
+        print("Step 1: add_comments_and_highlight_textRange()")
+        output_doc, results = DocProcessor.add_comments_and_highlight_textRange(input_path, doc_rules)
+        print("output_doc:", output_doc)
+        print("results (len):", len(results))
+        pprint.pprint(results[:3])  # 只打印前3条以免太多
+
+        # Step 2: update comments by log -> 使用返回的 results 更新批注文本（演示替换成统一文本）
+        if results:
+            print("\nStep 2: update_comments_by_log() -> 将批注文本统一替为示例文本")
+            updated_output = DocProcessor.update_comments_by_log(output_doc, results,
+                                                                 updated_comment_text="请根据最新规范修订此处")
+            print("updated_output:", updated_output)
+        else:
+            print("跳过 Step 2：没有批注结果")
+
+        # Step 3: replace text by keyword -> 用 results 中的 keyword 做正文替换（演示）
+        if results:
+            print("\nStep 3: replace_text_by_keyword() -> 将关键词替换为已修订模板")
+            replaced_output = DocProcessor.replace_text_by_keyword(output_doc, results,
+                                                                   replacement_template="{old_text}（已修订）")
+            print("replaced_output:", replaced_output)
+        else:
+            print("跳过 Step 3：没有匹配到关键词")
+
+        print("\n测试完成。检查 ./output 目录下生成的文件。")
+
+    except Exception as e:
+        print("发生异常：", e)
+        traceback.print_exc()

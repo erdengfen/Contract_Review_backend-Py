@@ -11,7 +11,7 @@ CAS_SERVICE_URL: "http://localhost:8080/api/user/login"
 CAS_VERSION: 3
 server:
   host: 0.0.0.0
-  port: 8085
+  port: 8080
   timeout: 60
   workers: 4
 
@@ -31,23 +31,23 @@ openai_config:
   model: "qwen-turbo"
 
 database:
-  host: 127.0.0.1
+  host: mysql-prod
   port: 3306
   name: "contract_review"
   username: root
-  password: "123456"
+  password: "chongqinglingdong123456"
   pool_size: 10
   pool_timeout: 30
 
 
 mcp_server:
-  url: "http://127.0.0.1:8081/mcp/"
+  url: "http://mcp-server:8081/mcp/"
 
 redis_config:
-  host: 127.0.0.1
+  host: redis-prod
   port: 6379
   db: 10
-#  password: chongqinglingdong123456
+  password: "chongqinglingdong123456"
   decode_responses: True
   max_connections: 20
   socket_connect_timeout: 5

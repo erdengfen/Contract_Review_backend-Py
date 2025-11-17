@@ -30,7 +30,6 @@ class CASConfig(BaseModel):
     vanna_url_online: str = Field("vanna:8084", description="线上Vanna URL")
 
 
-
 class OpenAIConfig(BaseModel):
     # provider: str = Field("deepseek", description="LLM提供者，如 deepseek/openai")
     api_key: str = Field(..., description="LLM API密钥")
@@ -43,7 +42,7 @@ class DatabaseConfig(BaseModel):
     port: int = Field(3306, description="数据库端口")
     name: str = Field("contract_review", description="数据库名称")
     username: str = Field("root", description="数据库用户名")
-    password: str = Field("123456", description="数据库密码")
+    password: str = Field("chongqinglingdong123456", description="数据库密码")
     pool_size: int = Field(10, description="数据库连接池大小")
     pool_timeout: int = Field(30, description="数据库连接池超时时间（秒）")
 
@@ -55,7 +54,7 @@ class RedisConfig(BaseModel):
     host: str = Field("localhost", description="Redis主机地址")
     port: int = Field(6379, description="Redis端口")
     db: int = Field(10, description="Redis数据库索引")
-    # password: str = Field("chongqinglingdong123456", description="Redis密码")
+    password: str = Field("chongqinglingdong123456", description="Redis密码")
     decode_responses: bool = Field(True, description="是否解码Redis响应")
     max_connections: int = Field(20, description="Redis最大连接数")
     socket_connect_timeout: int = Field(5, description="Redis连接超时时间（秒）")

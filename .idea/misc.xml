@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="Black">
-    <option name="sdkName" value="langchain-env" />
+    <option name="sdkName" value="hetong" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="contract_review311" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="hetong" project-jdk-type="Python SDK" />
 </project>
