@@ -3,6 +3,9 @@ import mimetypes
 import sys
 import urllib
 import uuid
+
+import fitz
+import pdfplumber
 import requests
 from docx.oxml import CT_P, CT_Tbl
 import docx
@@ -13,8 +16,6 @@ from tqdm.auto import tqdm
 import subprocess
 import os
 import pdf2docx
-
-
 
 underline_styles = {
     "true": "text-decoration:underline;",
@@ -43,7 +44,7 @@ def upload(file, file_options):
     #     url = config_manager.config.get("WZ_SERVER", {}).get("OfficialStationUpload", "")
     # else:
     #     url = config_manager.config.get("WZ_SERVER", {}).get("TestStationUpload", "")
-    return  file
+    return file
     file_options_lower = {k.lower(): v for k, v in file_options.items()}
     authorization = file_options_lower.get("authorization")  # 获取 authorization
     headers = {
@@ -54,7 +55,6 @@ def upload(file, file_options):
 
         file_name = os.path.basename(file)
         object_name = file_options.get("objectName", file_name)
-
 
         file_mime = mimetypes.guess_type(file)[0] or "application/octet-stream"
 
@@ -262,7 +262,6 @@ def docx2html(doc_path, file_options):
         elif paragraph.alignment == 3:
             style += "text-align:justify;"
 
-
         if paragraph.paragraph_format.first_line_indent:
             style += f"text-indent:{paragraph.paragraph_format.first_line_indent.pt}px;"
         if paragraph.paragraph_format.left_indent:
@@ -270,12 +269,10 @@ def docx2html(doc_path, file_options):
         if paragraph.paragraph_format.right_indent:
             style += f"margin-right:{paragraph.paragraph_format.right_indent.pt}px;"
 
-
         if is_list_item:
 
             if paragraph.paragraph_format.left_indent:
                 style += f"padding-left:{paragraph.paragraph_format.left_indent.pt}px;"
-
 
         if paragraph.paragraph_format.space_before:
             style += f"margin-top:{paragraph.paragraph_format.space_before.pt}px;"
@@ -310,7 +307,6 @@ def docx2html(doc_path, file_options):
                         image_ext = image_part.content_type.split("/")[-1]
                         file_name = f"image_{uuid.uuid4().hex}.{image_ext}"
 
-
                         temp_img_path = os.path.join(temp_dir, file_name)
                         with open(temp_img_path, "wb") as img_file:
                             img_file.write(image_data)
@@ -342,10 +338,8 @@ def docx2html(doc_path, file_options):
         num_rows = len(table.rows)
         num_cols = len(table.columns)
 
-
         # print("Table XML Structure:")
         # print(table._element.xml)
-
 
         namespaces = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
         element = table._element
@@ -370,15 +364,12 @@ def docx2html(doc_path, file_options):
                 border_styles[border_tag] = f"{border_size_px}px {css_border_type}"
                 border_colors[border_tag] = f"#{border_color}" if border_color else ''
 
-
         shading = tree.xpath('.//w:shading', namespaces=namespaces)
         cell_shading = shading[0].get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}fill',
                                       '') if shading else ''
 
-
         html_table = "<table border='1' style='border-collapse:collapse;'>"
         merged_cells = set()
-
 
         data = [[{'text': '', 'gridSpan': False, 'gridSpan_num': 0, 'vMerge': False} for _ in range(num_cols)] for _ in
                 range(num_rows)]
@@ -388,22 +379,18 @@ def docx2html(doc_path, file_options):
             while col_index < len(row.cells):
                 cell = row.cells[col_index]
 
-
                 if (row_index, col_index) in merged_cells:
                     col_index += 1
                     continue
 
                 cell_text = cell.text or ""
 
-
                 grid_span = cell._element.xpath('.//w:gridSpan')
                 gridSpan_num = int(grid_span[0].val) if grid_span else 1
                 gridSpan = gridSpan_num > 1
 
-
                 v_merge = cell._element.xpath('.//w:vMerge')
                 vMerge = bool(v_merge)
-
 
                 data[row_index][col_index] = {
                     'text': cell_text,
@@ -582,7 +569,6 @@ def docx2html(doc_path, file_options):
                     while list_stack:
                         html_content += f"</{list_stack.pop()}>"
 
-
                     para_html = process_paragraph(para, file_options)
                     html_content += para_html
 
@@ -590,12 +576,10 @@ def docx2html(doc_path, file_options):
                 table = docx.table.Table(block, doc)
                 html_content += process_table(table)
 
-
         while list_stack:
             html_content += f"</{list_stack.pop()}>"
 
         return html_content
-
 
     return convert_doc_to_html(doc=doc, file_options=file_options)
 
@@ -632,7 +616,7 @@ def docx2md(doc_path, file_options):
             if run.font.highlight_color:
                 text = f"<mark>{text}</mark>"
         except Exception as e:
-            text=  text
+            text = text
         # 颜色/字体等：忽略（或可扩展为 <span style="...">）
         return text
 
@@ -772,14 +756,11 @@ def docx2md(doc_path, file_options):
                 level = max(1, min(6, level))
                 return f"{'#' * level} {text}\n"
 
-
         current_list_type = detect_list(para)
         if current_list_type:
             return text
 
-
         return f"{text}\n\n"
-
 
     md_lines = []
     list_stack = []
@@ -813,6 +794,29 @@ def docx2md(doc_path, file_options):
     return "".join(md_lines).strip()
 
 
+def docx2text(doc_path):
+    """从 .docx 文档中提取纯文本（段落和表格）"""
+
+    doc = Document(doc_path)
+    full_text = []
+    # 提取段落
+    for para in doc.paragraphs:
+        text = para.text.strip()
+        if text:
+            full_text.append(text)
+
+    # 提取表格
+    for table in doc.tables:
+        table_text = []
+        for row in table.rows:
+            row_text = "\t".join(cell.text.strip() for cell in row.cells)
+            table_text.append(row_text)
+        if table_text:
+            full_text.append("\n".join(table_text))
+
+    return "\n".join(full_text)
+
+
 def doc2docx(input_path, output_path=None, keep_active=False):
     paths = resolve_paths(input_path, output_path)
     if sys.platform == "darwin":
@@ -838,3 +842,48 @@ def mk_pdf2docx(pdf_path, docx_path):
     return docx_path
 
 
+def extract_text_from_pdf_pdfplumber(file_path: str) -> str:
+    """使用pdfplumber提取PDF文本"""
+    try:
+        text = ""
+        with pdfplumber.open(file_path) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text() or ""
+                text += page_text + "\n"
+        return text.strip()
+    except Exception as e:
+        print(f"使用pdfplumber提取PDF文本失败: {e}")
+        raise
+
+
+def extract_text_from_pdf_pymupdf(file_path: str) -> str:
+    """使用PyMuPDF提取PDF文本"""
+    try:
+        text = ""
+        with fitz.open(file_path) as pdf:
+            for page_num in range(len(pdf)):
+                page = pdf[page_num]
+                page_text = page.get_text()
+                text += page_text + "\n"
+        return text.strip()
+    except Exception as e:
+        print(f"使用PyMuPDF提取PDF文本失败: {e}")
+        raise
+
+
+def extract_text_from_pdf(file_path: str) -> str:
+    """提取PDF文本，尝试多种方法"""
+    try:
+        # 先尝试pdfplumber
+        text = extract_text_from_pdf_pdfplumber(file_path)
+        if not text.strip():
+            # 如果提取结果为空，尝试PyMuPDF
+            text = extract_text_from_pdf_pymupdf(file_path)
+        return text
+    except Exception as e:
+        print(f"提取PDF文本失败: {e}")
+        raise
+
+
+# if __name__ == '__main__':
+#     docx2text(r"F:\python_project\Contract_Review_backend-Py\output\uploads\1\校园主页升级改版服务合同.doc")

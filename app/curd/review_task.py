@@ -28,11 +28,12 @@ class CRUDReviewTask:
 
         session=await CRUDSession.get_session(db, request.session_id)
         review_task = ReviewTask(
-            contract_id=session.contract_id,
+             file_id=session.file_id,
             session_id=request.session_id,
             user_id=user_id,
             stance=request.stance,
             intensity=request.intensity,
+            contract_type=request.contract_type,
             description=request.description,
             status="pending"
         )

@@ -36,7 +36,7 @@ async def chat(
         raise HTTPException(status_code=404, detail="会话不存在")
     session = get_or_create_chat_session(
         db=db,
-        contract_id=contract.contract_id,
+        file_id=contract.file_id,
         session_id=request.session_id,
         user_id=current_user.id if current_user else None
     )   

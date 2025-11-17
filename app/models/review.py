@@ -19,10 +19,12 @@ class ReviewTask(Base):
 
     id = Column(Integer, primary_key=True,comment="任务ID")
     session_id = Column(Integer,comment="会话ID")
-    contract_id = Column(Integer,comment="所属文件")
+    type = Column(String(32),comment="类型: 审查:review, 校验:validate,比对:compare")
+    file_id = Column(Integer,comment="所属文件")
     user_id = Column(Integer,comment="发起用户")
     stance = Column(String(32),comment="审查立场")
     intensity = Column(String(32),comment="审查尺度")
+    contract_type = Column(String(32),comment="合同类型")
     description = Column(Text,comment="审查需求描述")
     status = Column(String(32),comment="状态: pending:待处理, completed:已完成, failed:处理失败")
     created_at = Column(TIMESTAMP, default=datetime.now, comment="创建时间")
@@ -32,7 +34,7 @@ class ReviewTask(Base):
         return {
             "id": self.id,
             "session_id": self.session_id,
-            "contract_id": self.contract_id,
+            "file_id": self.file_id,
             "user_id": self.user_id,
             "stance": self.stance,
             "intensity": self.intensity,

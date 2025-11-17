@@ -21,7 +21,11 @@ class UploadResponse(BaseModel):
     file_url: Optional[str] = Field(..., description="文件访问URL")
     party_a: Optional[str] = Field(..., description="甲方名称")
     party_b: Optional[str] = Field(..., description="乙方名称")
-    amount: Optional[str] = Field(..., description="合同金额")
+    amount: Optional[float] = Field(..., description="合同金额")
 
-    class Config:
-        from_attributes = True
+class Config:
+    from_attributes = True
+
+class TransformContractRequest(BaseModel):
+    html_content: str = Field(..., description="合同文件HTML内容")
+    title: str = Field(..., description="合同标题")

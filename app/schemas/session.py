@@ -14,14 +14,14 @@ class SessionResponse(BaseModel):
     session_id: int = Field(..., description="会话ID")
     title: str = Field(..., description="会话主题")
     session_type: str = Field(..., description="会话类型")
-    contract_id: Optional[int] = Field(None, description="关联文件ID")
+    file_id: Optional[int] = Field(None, description="关联文件ID")
     created_at: str = Field(..., description="创建时间")
 
 class CreateSessionRequest(BaseModel):
     """创建会话请求体"""
     title: str = Field(..., description="会话主题")
     session_type: str = Field(..., description="会话类型")
-    contract_id: Optional[int] = Field(None, description="关联文件ID")
+    file_id: Optional[int] = Field(None, description="关联文件ID")
 
 class ListSessionRequest(BaseModel):
     """查询会话列表请求体"""
@@ -67,6 +67,6 @@ class SessionHistoryDetailResponse(BaseModel):
     session_id: int = Field(..., description="会话ID")
     title: str = Field(..., description="会话主题")
     session_type: str = Field(..., description="会话类型")
-    contract_id: Optional[int] = Field(None, description="关联文件ID")
+    file_id: Optional[int] = Field(None, description="关联文件ID")
     created_at: str = Field(..., description="创建时间")
     messages: Optional[List[dict]] = Field(None, description="消息记录")

@@ -34,3 +34,4 @@ class UserLLMConfig(Base):
     # 新增字段：员工ID、部门
     employee_id = Column(String(64),comment="员工ID")
     department = Column(String(64),comment="部门")
+    role=Column(Integer,default=1,comment="角色:1-普通用户,2-教师")

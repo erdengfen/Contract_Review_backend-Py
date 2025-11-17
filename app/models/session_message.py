@@ -26,7 +26,7 @@ class Session(Base):
     __tablename__ = "session"
 
     id = Column(Integer, primary_key=True,comment="会话ID")
-    contract_id = Column(Integer,comment="所属文件")
+    file_id = Column(Integer,comment="所属文件")
     user_id = Column(Integer,comment="发起用户")
     title = Column(String(256),comment="会话主题")
     session_type = Column(String(16),comment="会话类型")

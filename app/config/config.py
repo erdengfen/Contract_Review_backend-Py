@@ -85,6 +85,7 @@ class Config(BaseModel):
     APP_NAME: str = Field("合同审阅系统API", description="应用名称")
     APP_VERSION: str = Field("1.0.0", description="应用版本")
     UPLOAD_DIR: str = Field("output/uploads", description="合同上传目录")
+    OSS_BUCKET_DIR: str = Field("output/contract_files", description="合同文件存储目录")
     RESULTS_DIR: str = Field("output/results", description="合同审阅结果目录")
     SESSIONS_DIR: str = Field("output/sessions", description="会话目录")
     SESSION_TIMEOUT: int = Field(3600, description="会话超时时间（秒）")

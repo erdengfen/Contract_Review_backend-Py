@@ -16,13 +16,15 @@ class ReviewTaskCreateRequest(BaseModel):
     stance: str = Field(..., description="审查立场（甲方/乙方）")
     intensity: str = Field(..., description="审查尺度（严格/标准/宽松）")
     description: Optional[str] = Field(None, description="审查需求描述")
+    contract_type: Optional[str] = Field(..., description="合同类型")
+    max_concurrent: Optional[int] = Field(5, description="最大并发数")
 
 
 class ReviewTaskResponse(BaseModel):
     """审阅任务响应"""
     id: int = Field(..., description="任务ID")
     session_id: int = Field(..., description="会话ID")
-    contract_id: int = Field(..., description="所属文件ID")
+    file_id: int = Field(..., description="所属文件ID")
     user_id: int = Field(..., description="发起用户ID")
     stance: str = Field(..., description="审查立场")
     intensity: str = Field(..., description="审查尺度")

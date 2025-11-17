@@ -42,8 +42,8 @@ async def create_session(
         return GenericResponse(code=401, msg="用户未登录")
 
     # 验证关联合同文件
-    if request.contract_id:
-        contract = await CRUDContract.get_contract_file(db=db, file_id=request.contract_id)
+    if request.file_id:
+        contract = await CRUDContract.get_contract_file(db=db, file_id=request.file_id)
         if not contract:
             return GenericResponse(code=404, msg="关联的合同文件不存在")
 
@@ -53,14 +53,14 @@ async def create_session(
             user_id=current_user.id,
             title=request.title,
             session_type=request.session_type,
-            contract_id=request.contract_id
+            file_id=request.file_id
         )
 
         response_data = SessionResponse(
             session_id=session_obj.id,
             title=session_obj.title,
             session_type=session_obj.session_type,
-            contract_id=session_obj.contract_id,
+            file_id=session_obj.file_id,
             created_at=session_obj.created_at.isoformat()
         )
         return GenericResponse(code=200, msg="会话创建成功", data=response_data)
@@ -134,7 +134,7 @@ async def update_session_title(
             session_id=request.session_id,
             title=session_obj.title,
             session_type=session_obj.session_type,
-            contract_id=session_obj.contract_id,
+            file_id=session_obj.file_id,
             created_at=session_obj.created_at.isoformat(),
         )
     )
@@ -199,9 +199,9 @@ async def session_history_detail(
                 data=formatted_messages
             )
         elif session.session_type == "review":
-            contract_id=session.contract_id
+            file_id=session.file_id
             # 获取审批任务相关信息
-            review_task = await CRUDReviewTask.get_review_task(db, contract_id)
+            review_task = await CRUDReviewTask.get_review_task(db, file_id)
             if not review_task:
                 return GenericResponse(code=404, msg="合同审阅任务不存在")
             # 获取审批任务结果详情

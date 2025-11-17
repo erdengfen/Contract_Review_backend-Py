@@ -20,17 +20,17 @@ from app.models.session_message import Message as DBMessage
 from app.schemas.model_configs import ModelConfigSchema
 
 
-def get_or_create_chat_session(db: Session, contract_id: int, session_id: Optional[int] = None, user_id: int = None) -> DBSession:
+def get_or_create_chat_session(db: Session, file_id: int, session_id: Optional[int] = None, user_id: int = None) -> DBSession:
     """
     获取或创建合同对应的聊天会话
     :param db: 数据库会话
-    :param contract_id: 合同ID
+    :param file_id: 合同ID
     :param user_id: 用户ID
     :return: 聊天会话对象
     """
     session = db.query(DBSession).filter(
         and_(
-            DBSession.contract_id == contract_id,
+            DBSession.file_id == file_id,
             DBSession.user_id == user_id,
             DBSession.id == session_id,
             DBSession.session_type == "chat"
@@ -38,9 +38,9 @@ def get_or_create_chat_session(db: Session, contract_id: int, session_id: Option
     ).first()
 
     if not session:
-        title = f"合同 #{contract_id} 的对话"
+        title = f"合同 #{file_id} 的对话"
         session = DBSession(
-            contract_id=contract_id,
+            file_id=file_id,
             user_id=user_id,
             title=title,
             session_type="chat"
@@ -103,9 +103,9 @@ async def chat_stream_generator(
     """
         生成器：流式输出 AI 回复，并在结束后保存完整内容
     """
-    # 查询会话信息，获取contract_id等额外信息
+    # 查询会话信息，获取file_id等额外信息
     session = db.query(Session).filter(Session.id == session_id).first()
-    contract_id = session.contract_id if session else None
+    file_id = session.file_id if session else None
     user_id = session.user_id if session else None
     
     full_content = ""
@@ -115,7 +115,7 @@ async def chat_stream_generator(
             data = {
                 'type': 'content',
                 'session_id': session_id,
-                'contract_id': contract_id,
+                'file_id': file_id,
                 'user_id': user_id,
                 'content': delta,
                 'role': 'assistant'
@@ -134,7 +134,7 @@ async def chat_stream_generator(
         data = {
             'type': 'done',
             'session_id': session_id,
-            'contract_id': contract_id,
+            'file_id': file_id,
             'user_id': user_id,
             'message_id': message.id if message else None,
             'full_content': full_content
@@ -147,7 +147,7 @@ async def chat_stream_generator(
         error_data = {
             'type': 'error',
             'session_id': session_id,
-            'contract_id': contract_id,
+            'file_id': file_id,
             'user_id': user_id,
             'error': error_msg
         }
@@ -214,20 +214,20 @@ def get_session_by_id(db: Session, session_id: int) -> Optional[DBSession]:
     ).first()
 
 
-def create_new_session(db: Session, contract_id: int, user_id: int, title: Optional[str] = None) -> DBSession:
+def create_new_session(db: Session, file_id: int, user_id: int, title: Optional[str] = None) -> DBSession:
     """
     创建新的聊天会话
     :param db: 数据库会话
-    :param contract_id: 合同ID
+    :param file_id: 合同ID
     :param user_id: 用户ID
     :param title: 会话标题（可选）
     :return: 创建的会话对象
     """
     if not title:
-        title = f"合同 #{contract_id} 的对话"
+        title = f"合同 #{file_id} 的对话"
     
     session = DBSession(
-        contract_id=contract_id,
+        file_id=file_id,
         user_id=user_id,
         title=title,
         session_type="chat"
