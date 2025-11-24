@@ -13,5 +13,5 @@ docker network inspect app-net
 # 镜像打包
 docker build  -t contract_review  .
 # 启动服务(7005) 加入局域网-挂载目录 
-docker run -d --name contract_review --network app-net -p 8080:8080 -v /home/cqupt/data/Contract_Review_backend-Py-data:/app/output  contract_review 
+docker run -d --name contract_review --network app-net -p 7005:8080 -v /home/cqupt/data/Contract_Review_backend-Py-data:/app/output  contract_review 
 ```

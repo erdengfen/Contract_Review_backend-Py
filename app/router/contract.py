@@ -82,12 +82,7 @@ async def upload_contract_file(
         with open(save_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
         # 识别合同类型
-        model_config = await get_default_model_by_type(db, model_type="chat")
-
-        async_client = AsyncClient(
-            api_key=model_config.api_key,
-            base_url=model_config.api_endpoint
-        )
+        llm_client =  llm.init_llm()
         if file.filename.split('.')[-1].lower() == "pdf":
             contract_content = extract_text_from_pdf(save_path)
         elif file.filename.split('.')[-1].lower() == "doc":
