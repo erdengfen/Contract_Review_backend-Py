@@ -10,6 +10,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session as DBSession
 from app.models import Session, Message
 from typing import Optional
+from app.curd.comparison_task import CRUDComparisonTask
 
 class CRUDSession:
 
@@ -70,6 +71,8 @@ class CRUDSession:
         elif session_obj.session_type == 'review':
             # 需要删除关联的审阅记录
             pass
+        elif session_obj.session_type == 'compare':
+            await CRUDComparisonTask.delete_by_session(db, session_obj.id)
 
         try:
             db.delete(session_obj)

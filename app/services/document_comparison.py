@@ -6,83 +6,130 @@
 @Date    ：2025/11/20 18:53
 """
 
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from docx import Document
 from difflib import SequenceMatcher
 
-def read_docx_paragraphs(path):
+
+def read_docx_paragraphs(path: str) -> List[str]:
+    """读取 docx 段落并移除空行。"""
     doc = Document(path)
     return [p.text.strip() for p in doc.paragraphs if p.text.strip()]
 
-def diff_paragraphs(std_text,cmp_text):
-    """
-    进行文字上的diff
-    :param std_text:
-    :param cmp_text:
-    :return:replace/delete/insert 片段组合,json字段
-    比对段落内文本差异
-    """
-    std_chars = list(std_text)
-    cmp_chars = list(cmp_text)
 
-    matcher = SequenceMatcher(None, std_chars, cmp_chars, autojunk=False)
-    results = []
-
+def _build_char_diff(std_text: str, cmp_text: str) -> List[Dict[str, Any]]:
+    """构造段落内部的字符级 diff 信息。"""
+    matcher = SequenceMatcher(
+        None, list(std_text), list(cmp_text), autojunk=False
+    )
+    chunks: List[Dict[str, Any]] = []
     for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-        if tag == 'equal':
+        if tag == "equal":
             continue
+        chunk: Dict[str, Any] = {
+            "operation": tag,
+            "std_text": std_text[i1:i2],
+            "cmp_text": cmp_text[j1:j2],
+            "std_range": [i1, i2],
+            "cmp_range": [j1, j2],
+        }
+        chunks.append(chunk)
+    return chunks
 
-        results.append({
-            "type": tag,
-            "std_text": "".join(std_chars[i1:i2]),
-            "cmp_text": "".join(cmp_chars[j1:j2])
-        })
 
-    return results
+def _append_diff_entry(
+    results: List[Dict[str, Any]],
+    *,
+    std_index: Optional[int],
+    cmp_index: Optional[int],
+    operation: str,
+    std_text: str,
+    cmp_text: str,
+    char_diff: Optional[List[Dict[str, Any]]] = None,
+) -> None:
+    """整理 diff 数据结构，避免重复样板代码。"""
+    if not std_text and not cmp_text:
+        return
+    entry: Dict[str, Any] = {
+        "std_index": std_index,
+        "cmp_index": cmp_index,
+        "operation": operation,
+        "standard_text": std_text,
+        "comparison_text": cmp_text,
+    }
+    if char_diff:
+        entry["char_diff"] = char_diff
+    results.append(entry)
 
 
-def diff_docs(std_docx, cmp_docx):
-    """按段落读取差异"""
+def diff_docs(std_docx: str, cmp_docx: str) -> Dict[str, Any]:
+    """
+    按段落比对两个 docx 文档，产出差异 JSON。
+
+    返回结构:
+    {
+        "summary": {...},
+        "diffs": [...]
+    }
+    """
+    if not Path(std_docx).exists():
+        raise FileNotFoundError(f"标准文档不存在: {std_docx}")
+    if not Path(cmp_docx).exists():
+        raise FileNotFoundError(f"比对文档不存在: {cmp_docx}")
+
     std_lines = read_docx_paragraphs(std_docx)
     cmp_lines = read_docx_paragraphs(cmp_docx)
 
-    s = SequenceMatcher(None, std_lines, cmp_lines, autojunk=False)
-    diff_result = []
+    matcher = SequenceMatcher(None, std_lines, cmp_lines, autojunk=False)
+    diff_result: List[Dict[str, Any]] = []
 
-    for tag, i1, i2, j1, j2 in s.get_opcodes():
-
-        if tag == 'equal':
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        if tag == "equal":
             continue
 
-        elif tag == 'delete':
-            for line in std_lines[i1:i2]:
-                diff_result.append({
-                    "type": "deleted",
-                    "std_text": line
-                })
-
-        elif tag == 'insert':
-            for line in cmp_lines[j1:j2]:
-                diff_result.append({
-                    "type": "inserted",
-                    "cmp_text": line
-                })
-
-        elif tag == 'replace':
-            # 逐段对比，然后做字级 diff
+        if tag == "delete":
+            for offset, line in enumerate(std_lines[i1:i2]):
+                _append_diff_entry(
+                    diff_result,
+                    std_index=i1 + offset,
+                    cmp_index=None,
+                    operation="delete",
+                    std_text=line,
+                    cmp_text="",
+                )
+        elif tag == "insert":
+            for offset, line in enumerate(cmp_lines[j1:j2]):
+                _append_diff_entry(
+                    diff_result,
+                    std_index=None,
+                    cmp_index=j1 + offset,
+                    operation="insert",
+                    std_text="",
+                    cmp_text=line,
+                )
+        elif tag == "replace":
             max_len = max(i2 - i1, j2 - j1)
-
             for k in range(max_len):
-                std_text = std_lines[i1 + k] if i1 + k < i2 else ""
-                cmp_text = cmp_lines[j1 + k] if j1 + k < j2 else ""
+                std_idx = i1 + k if i1 + k < len(std_lines) else None
+                cmp_idx = j1 + k if j1 + k < len(cmp_lines) else None
+                std_text = std_lines[std_idx] if std_idx is not None and std_idx < i2 else ""
+                cmp_text = cmp_lines[cmp_idx] if cmp_idx is not None and cmp_idx < j2 else ""
+                char_diff = _build_char_diff(std_text, cmp_text)
+                _append_diff_entry(
+                    diff_result,
+                    std_index=std_idx,
+                    cmp_index=cmp_idx,
+                    operation="replace",
+                    std_text=std_text,
+                    cmp_text=cmp_text,
+                    char_diff=char_diff if char_diff else None,
+                )
 
-                # 字级 diff
-                char_diffs = diff_paragraphs(std_text, cmp_text)
-
-                diff_result.append({
-                    "type": "modified",
-                    "std_text": std_text,
-                    "cmp_text": cmp_text,
-                    "detail": char_diffs  # 细粒度修改
-                })
-
-    return diff_result
+    summary = {
+        "standard_paragraphs": len(std_lines),
+        "comparison_paragraphs": len(cmp_lines),
+        "difference_count": len(diff_result),
+    }
+    return {"summary": summary, "diffs": diff_result}

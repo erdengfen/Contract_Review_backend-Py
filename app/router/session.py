@@ -5,6 +5,7 @@
 @Author  ：潘尚国
 @Date    ：2025/11/4 10:38 
 """
+import json
 from typing import List
 
 from fastapi import APIRouter, Depends
@@ -13,14 +14,17 @@ from app.core.dependencies import get_db
 from app.curd.chat_session import CRUDSession
 from app.curd.contract_file import CRUDContract
 from app.curd.review_task import CRUDReviewTask, CRUDReviewResult
+from app.curd.comparison_task import CRUDComparisonTask
 from app.middlewares.auth import optional_get_current_user
 
 from sqlalchemy.orm import Session as DBSession
 
 from app.models import Message
+from app.models.session_message import SessionTypeEnum
 from app.schemas.base import GenericResponse
 from app.schemas.session import SessionResponse, SessionListResponse, ListSessionRequest, CreateSessionRequest, \
     UpdateSessionTitleRequest, DeleteSessionRequest, SessionHistoryDetailRequest
+from app.schemas.comparison_task import ComparisonHistoryResponse, FileInfo
 
 router = APIRouter(tags=["会话管理"])
 """
@@ -180,7 +184,7 @@ async def session_history_detail(
         session = await CRUDSession.get_session(db, request.session_id)
         if not session:
             return GenericResponse(code=404, msg="会话不存在")
-        if session.session_type == "chat":
+        if session.session_type == SessionTypeEnum.CHAT.value:
             raw_messages = db.query(Message).filter(Message.session_id == request.session_id).order_by(Message.created_at).all()
             formatted_messages = []
             for msg in raw_messages:
@@ -198,7 +202,7 @@ async def session_history_detail(
                 msg="会话历史记录获取成功",
                 data=formatted_messages
             )
-        elif session.session_type == "review":
+        elif session.session_type == SessionTypeEnum.REVIEW.value:
             file_id=session.file_id
             # 获取审批任务相关信息
             review_task = await CRUDReviewTask.get_review_task(db, file_id)
@@ -210,6 +214,41 @@ async def session_history_detail(
                 code=200,
                 msg="合同审阅结果获取成功",
                 data=[val.dict() for val in review_results]
+            )
+        elif session.session_type == SessionTypeEnum.COMPARE.value:
+            task = await CRUDComparisonTask.get_by_session(db, session.id)
+            if not task:
+                return GenericResponse(code=404, msg="合同比对记录不存在")
+            std_file = await CRUDContract.get_contract_file(db=db, file_id=task.standard_file_id)
+            cmp_file = await CRUDContract.get_contract_file(db=db, file_id=task.comparison_file_id)
+            if not std_file or not cmp_file:
+                return GenericResponse(code=404, msg="比对文件缺失")
+            diff_summary = json.loads(task.diff_summary or "{}")
+            diffs = json.loads(task.diff_result or "[]")
+            response = ComparisonHistoryResponse(
+                task_id=task.id,
+                session_id=session.id,
+                diff_summary=diff_summary,
+                diffs=diffs,
+                standard_file=FileInfo(
+                    file_id=std_file.id,
+                    title=std_file.title,
+                    file_type=std_file.file_type,
+                    file_path=std_file.file_path,
+                    download_url=f"/api/contract/download/{std_file.id}"
+                ),
+                comparison_file=FileInfo(
+                    file_id=cmp_file.id,
+                    title=cmp_file.title,
+                    file_type=cmp_file.file_type,
+                    file_path=cmp_file.file_path,
+                    download_url=f"/api/contract/download/{cmp_file.id}"
+                )
+            )
+            return GenericResponse(
+                code=200,
+                msg="合同比对记录获取成功",
+                data=response.model_dump()
             )
         else:
             return GenericResponse(code=400, msg="会话类型错误")

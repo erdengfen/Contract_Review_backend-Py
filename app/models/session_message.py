@@ -17,6 +17,7 @@ from enum import Enum
 class SessionTypeEnum(str, Enum):
     CHAT = "chat" # 普通会话
     REVIEW = "review" # 合同审阅会话
+    COMPARE = "compare" # 合同比对会话
 
 
 class Session(Base):

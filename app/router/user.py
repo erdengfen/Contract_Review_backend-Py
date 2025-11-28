@@ -169,7 +169,7 @@ async def cas_callback(request: Request):
             expires_delta=refresh_token_expires
         )
 
-        # ✅ 统一返回 JWT，前端可保存或直接跳转
+        # 统一返回 JWT，前端可保存或直接跳转
         redirect_url = f"http://{settings.cas_config.host_local}/?token={access_token}"
         return RedirectResponse(url=redirect_url)
 

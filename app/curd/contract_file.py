@@ -65,18 +65,6 @@ class CRUDContract:
         db.commit()
         db.refresh(new_file)
 
-        # #调用llm解析合同金额，甲乙方
-        # llm = await llm_manager.get_user_llm(user_id=user_id, db_session=db)
-        # parsed_data = await ContractParser.extract_parties_with_llm(save_path, llm)
-        #
-        # #将信息保存至数据库
-        # new_file.party_a = parsed_data.get("party_a")
-        # new_file.party_b = parsed_data.get("party_b")
-        # new_file.contract_value = parsed_data.get("contract_value")
-        # db.commit()
-
-        # 构造文件访问 URL（静态映射路径）
-        # 注意 URL 中中文或空格文件名要编码
         relative_path = f"/static/{user_id}/{quote(file_name)}"
         file_url =f"{relative_path}"
 

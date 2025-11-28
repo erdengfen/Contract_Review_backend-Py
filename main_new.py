@@ -25,7 +25,8 @@ from  app.router import (user,
                          prompt_manage,
                          model_configs,
                         session,
-                        signboard
+                        signboard,
+                        comparison_task
                          )
 
 # 配置日志
@@ -89,6 +90,7 @@ app.include_router(session.router, prefix="/api/session", tags=["会话管理"])
 app.include_router(contract.router, prefix="/api/contract", tags=["文件上传下载"])
 app.include_router(chat.router, prefix="/api/chat", tags=["合同聊天"])
 app.include_router(review_task.router, prefix="/api/review_task", tags=["合同审阅"])
+app.include_router(comparison_task.router, prefix="/api/comparison_task", tags=["合同比对"])
 app.include_router(contract_type.router, prefix="/api/contract_type", tags=["合同类型管理"])
 app.include_router(prompt_manage.router, prefix="/api/prompt_manage", tags=["提示词管理"])
 app.include_router(model_configs.router, prefix="/api/model_configs", tags=["模型配置管理"])
