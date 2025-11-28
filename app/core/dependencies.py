@@ -5,7 +5,14 @@
 @Author  ：潘尚国
 @Date    ：2025/10/22 09:41
 """
-from app.core.mysql_db import SessionLocal
+from sqlalchemy.orm import sessionmaker
+
+from app.core.mysql_db import Base, engine
+import app.models
+# 自动创建表结构
+Base.metadata.create_all(bind=engine)
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def get_db():

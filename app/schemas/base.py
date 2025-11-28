@@ -19,3 +19,6 @@ class BaseSchema(BaseModel):
 class GenericResponse(BaseSchema, Generic[T]):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     data: Optional[T] = Field(None, description="业务数据")
+
+
+

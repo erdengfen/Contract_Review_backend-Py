@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "word-document-server": {
-      "url": "http://127.0.0.1:8080/mcp",
+      "url": "http://mcp-server:8080/mcp",
       "description": "Word文档处理服务器"
     }
   }

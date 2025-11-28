@@ -10,77 +10,106 @@ from pathlib import Path
 from langchain_core.messages import SystemMessage, HumanMessage
 from ..core.llm import init_llm
 from ..utils.mcp_client import MCPClient
-from ..utils.content_slicer import split_text_by_length
+
+# from ..utils.content_slicer import split_text_by_length
 
 logger = logging.getLogger(__name__)
 
+
 class ContractReviewService:
     """合同审阅服务"""
-    #初始化函数
+
+    # 初始化函数
     def __init__(self, mcp_client: MCPClient):
         self.llm = init_llm()
         self.mcp_client = mcp_client
-    
-    async def review_contract(self, chunk_text: str, user_role: str = "甲方", contract_type: str = "", 
-                            context: str = "") -> List[Dict[str, Any]]:
-        """执行合同审阅"""
+
+    async def review_contract(
+            self,
+            async_client,
+            model_config,
+            chunk_text: str,
+            stance: str = "甲方",
+            intensity: str = "标准",
+            context: str = "",
+            contract_type: str = "通用"
+    ) -> List[Dict[str, Any]]:
         try:
-            # 构建审阅提示词
             base_prompt_dir = Path(__file__).parent.parent.parent / "prompts"
-            if contract_type == "service":
-                prompt_file_path = base_prompt_dir / "contract_reviewer_prompt_service.txt"
-
-            elif contract_type == "sales":
-                prompt_file_path = base_prompt_dir / "contract_reviewer_prompt_sales.txt"
+            prompt_file_path = base_prompt_dir / "contract_reviewer_prompt_unified.txt"
+            #这里的合同类型字段不知道数据库里具体叫什么名字，就按类型写在这里了
+            if contract_type == "基建类合同":
+                contract_type_prompt_file = "contract_reviewer_prompt_build.txt"
+            elif contract_type == "货物类合同":
+                contract_type_prompt_file = "contract_reviewer_prompt_sales.txt"
+            elif contract_type == "服务类合同":
+                contract_type_prompt_file = "contract_reviewer_prompt_service.txt"
             else:
-                prompt_file_path = base_prompt_dir / "contract_reviewer_prompt_base.txt"
+                contract_type_prompt_file = "contract_reviewer_prompt_base.txt"
 
-            try:
-                with open(prompt_file_path, 'r', encoding='utf-8') as f:
-                    base_prompt = f.read()
-            except FileNotFoundError:
-                base_prompt = "你是一个专业的合同审查律师，请对以下合同进行专业审阅。"
+            contract_type_prompt_file_path = base_prompt_dir / contract_type_prompt_file
 
-            # 构建上下文信息
-            context_info = ""
-            if context:
-                context_info = f"""
+            with open(prompt_file_path, 'r', encoding='utf-8') as f:
+                base_prompt = f.read()
 
-## 审阅上下文
-{context}
+            with open(contract_type_prompt_file_path, 'r', encoding='utf-8') as f:
+                contract_type_prompt = f.read()
 
-请结合上述上下文信息，确保审阅的连续性和一致性。
-"""
+            # 构建上下文
+            context_info = f"""
+            ## 审阅上下文
+            {context}
+        
+            请结合上述上下文信息，确保审阅的连续性和一致性。
+            """ if context else ""
 
-            review_prompt = f"""{base_prompt}
-
-## 任务要求
-用户是{user_role}，请从{user_role}的角度分析合同风险。对以下合同进行专业审阅：{context_info}
-
-## 合同内容
-```
-{chunk_text}
-```
-
-请严格按照上述格式要求输出审阅结果。每个修改点必须包含：
-1. 【修改点X】- 修改点编号和标题
-2. 【原文】- 原始条款内容
-3. 【风险分析】- 法律风险分析
-4. 【风险等级】- （高/中/低；含评分 0–100）
-5. 【修改后的内容】- 建议的修改内容
-6. 【修改理由】- 说明法律条文与商业合理性
-
-请确保分析专业、建议可行、格式规范。结合上下文信息，保持审阅的连贯性。
-"""
+            # 强度描述（用于提示词，非策略文件）
+            intensity_desc_map = {
+                "严格": "请进行严格审阅，覆盖全部审查维度，识别所有潜在法律与履约风险，包括措辞模糊、权利不对等等细节问题。",
+                "标准": "请进行标准审阅，重点关注7个核心风险领域（交付、质量、违约、知识产权、保密、争议解决、生效要件）。",
+                "宽松": "请进行宽松审阅，仅指出重大法律风险（如无效免责、管辖不明、主体缺失、违约无责等），忽略一般性模糊表述。"
+            }
+            intensity_desc = intensity_desc_map.get(intensity, intensity_desc_map["标准"])
+            review_prompt = base_prompt.format(stance=stance) + f"""
+    
+    ## 任务要求
+    - 用户立场：{stance}
+    - 审查强度：{intensity}
+    - 合同类型：{contract_type}
+    - 审阅要点：{contract_type_prompt}
+    - {intensity_desc}
+    
+    {context_info}
+    
+    ## 合同内容
+    {chunk_text}
+    请严格按照上述格式要求输出审阅结果。每个修改点必须包含：
+    1. 【修改点X】
+    2. 【原文】
+    3. 【风险分析】
+    4. 【风险等级】
+    5. 【修改后的内容】
+    6. 【修改理由】
+    7. 【风险类型】- 风险类型（15字内)
+    确保分析专业、建议可行、格式规范。
+    """
 
             messages = [
-                SystemMessage(content="你是一个专业的合同审查律师，请严格按照提示词要求进行合同审阅。"),
-                HumanMessage(content=review_prompt)
+                {"role": "system", "content": "你是一个专业的合同审查律师，请严格按照提示词要求进行合同审阅。"},
+                {"role": "user", "content": review_prompt}
             ]
 
-            # 调用模型并解析结果
-            response = self.llm.invoke(messages)
-            review_result = response.content
+            response = await async_client.chat.completions.create(
+                model=model_config.model_name,
+                stream=False,
+                messages=messages,
+                temperature=model_config.temperature,
+                max_tokens=model_config.max_tokens,
+                top_p=model_config.top_p,
+                frequency_penalty=model_config.frequency_penalty,
+                presence_penalty=model_config.presence_penalty
+            )
+            review_result = response.choices[0].message.content
             modifications = self._parse_review_result(review_result)
 
             return modifications
@@ -183,13 +212,19 @@ class ContractReviewService:
                 if not reason_match:
                     reason_match = re.search(r'修改理由[：:\s]*([\s\S]*?)(?=\n*【|$)', content, re.DOTALL)
 
+                # 风险类型
+                type_match = re.search(r'【风险类型】[：:\s]*([\s\S]*?)(?=\n*【|$)', content, re.DOTALL)
+                if not type_match:
+                    type_match = re.search(r'风险类型[：:\s]*([\s\S]*?)(?=\n*【|$)', content, re.DOTALL)
+
                 modification = {
                     "position": f"修改点{point_num}",
                     "original_content": original_match.group(1).strip() if original_match else "未找到原文内容",
                     "risk_analysis": risk_match.group(1).strip() if risk_match else "未找到风险分析",
                     "risk_level": level_match.group(1).strip() if level_match else "未知",
                     "suggested_content": modified_match.group(1).strip() if modified_match else "未找到修改建议",
-                    "reason": reason_match.group(1).strip() if reason_match else "未找到修改理由"
+                    "reason": reason_match.group(1).strip() if reason_match else "未找到修改理由",
+                    "risk_type": type_match.group(1).strip() if type_match else "未找到风险类型"
                 }
 
                 modifications.append(modification)
@@ -210,6 +245,7 @@ class ContractReviewService:
                     "risk_level":"未知",
                     "suggested_content": "解析失败",
                     "reason":"解析失败",
+                    "risk_type":"解析失败",
                     "priority": "未知",
                     "action": "需要重新审阅"
                 }
