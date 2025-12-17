@@ -5,6 +5,7 @@
 @Author  ：潘尚国
 @Date    ：2025/10/22 09:52 
 """
+import asyncio
 from datetime import timedelta
 
 from fastapi import Depends, APIRouter,  Request, HTTPException
@@ -15,12 +16,13 @@ from starlette.responses import RedirectResponse
 from app.config.config import settings
 from app.core.dependencies import get_db
 from app.curd.user import authenticate_user, get_user_by_username
-from app.middlewares.auth import get_valid_tokens, jwt_config, create_access_token, create_refresh_token, \
-    optional_get_current_user
+from app.middlewares.auth import acquire_login_lock, release_login_lock, get_valid_tokens, jwt_config, \
+    create_access_token, create_refresh_token, \
+    optional_get_current_user, verify_refresh_token, revoke_user_tokens
 from app.models import User
-from  app.schemas.base import GenericResponse
+from app.schemas.base import GenericResponse, BaseSchema
 from app.curd import user as user_crud
-from app.schemas.user import UserResponse, UserCreate, UserUpdate, LoginRequest, LoginResponse
+from app.schemas.user import UserResponse, UserCreate, UserUpdate, LoginRequest, LoginResponse, RefreshTokenRequest
 from app.utils.cas_server import cas_client
 
 router = APIRouter(tags=["用户管理"])
@@ -110,27 +112,119 @@ async def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # 检查 Redis 中是否存在有效的令牌
-    valid_tokens = await get_valid_tokens(user.id)
-    if valid_tokens:
-        access_token, refresh_token = valid_tokens
+    # 尝试获取登录锁
+    lock_acquired = await acquire_login_lock(user.id)
+
+    if not lock_acquired:
+        # 已有并发登录在执行，只读 Redis
+        tokens = await get_valid_tokens(user.id)
+        if not tokens:
+            raise HTTPException(
+                status_code=429,
+                detail="Login in progress, please retry"
+            )
+        access_token, refresh_token = tokens
     else:
-        access_token_expires = timedelta(minutes=jwt_config.access_token_expire_minutes)
-        refresh_token_expires = timedelta(days=jwt_config.refresh_token_expire_days)
-        # 存储令牌到 Redis
-        access_token = await create_access_token(
-            data={"sub": user.username, "user_id": user.id}, expires_delta=access_token_expires
-        )
-        # 存储刷新令牌到 Redis
-        refresh_token = await create_refresh_token(
-            data={"sub": user.username, "user_id": user.id}, expires_delta=refresh_token_expires
+        try:
+            # 检查 Redis 中是否存在有效的令牌
+            valid_tokens = await get_valid_tokens(user.id)
+            if valid_tokens:
+                access_token, refresh_token = valid_tokens
+                # 测试
+                print(access_token[-5:], refresh_token[-5:])
+            else:
+                access_token_expires = timedelta(minutes=jwt_config.access_token_expire_minutes)
+                refresh_token_expires = timedelta(days=jwt_config.refresh_token_expire_days)
+
+                # 存储令牌到 Redis
+                access_token = await create_access_token(
+                    data={"sub": user.username, "user_id": user.id},
+                    expires_delta=access_token_expires
+                )
+                # 存储刷新令牌到 Redis
+                refresh_token = await create_refresh_token(
+                    data={"sub": user.username, "user_id": user.id},
+                    expires_delta=refresh_token_expires
+                )
+                # print("sub:", user.username, "user_id:", user.id)
+        finally:
+            # 释放锁
+            await release_login_lock(user.id)
+
+    if not access_token or not refresh_token:
+        raise HTTPException(status_code=500, detail="Token generation failed")
+
+    return GenericResponse(
+        code=200,
+        msg="登录成功",
+        data=LoginResponse(
+            access_token=access_token,
+            token_type="bearer",
+            refresh_token=refresh_token
+    ))
+
+@router.post(
+    "/refresh",
+    response_model=GenericResponse[LoginResponse],
+    summary="使用 refresh_token 刷新 access_token"
+)
+async def refresh_access_token(request: RefreshTokenRequest):
+    """
+    使用 refresh_token 刷新 access_token
+    """
+
+    # 校验 refresh_token（JWT + Redis）
+    result = await verify_refresh_token(request.refresh_token)
+
+    # verify_refresh_token 返回 BaseSchema，说明校验失败
+    if isinstance(result, BaseSchema):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=result.msg
         )
 
-    return GenericResponse(code=200, msg="登录成功", data=LoginResponse(
-        access_token=access_token,
-        token_type="bearer",
-        refresh_token=refresh_token
-    ))
+    payload = result
+
+    print("refresh payload:", payload)
+
+    # 生成新的 access_token（写入 Redis）
+    access_token = await create_access_token(
+        data={
+            "sub": payload["sub"],
+            "user_id": payload["user_id"]
+        }
+    )
+
+    # 返回新的 access_token（refresh_token 不变）
+    return GenericResponse(
+        code=200,
+        msg="Access token refreshed",
+        data=LoginResponse(
+            access_token=access_token,
+            token_type="bearer",
+            refresh_token=request.refresh_token
+        )
+    )
+
+@router.post(
+    "/logout",
+    response_model=GenericResponse[None],
+    summary="用户登出"
+)
+async def logout(current_user=Depends(optional_get_current_user)):
+    if isinstance(current_user, BaseSchema):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect Access Token"
+        )
+
+    await revoke_user_tokens(current_user.id)
+
+    return GenericResponse(
+        code=200,
+        msg="登出成功",
+        data=None
+    )
 
 
 @router.get("/cas_login", summary="CAS 登录跳转")

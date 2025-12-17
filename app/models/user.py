@@ -20,6 +20,9 @@ class User(Base):
     password = Column(String(128),comment="密码哈希")
     is_active = Column(Integer, default=1, comment="是否活跃（1: 活跃, 0: 禁用）")
     created_at = Column(TIMESTAMP, default=datetime.now, comment="创建时间")
+    employee_id = Column(String(64), comment="员工ID")
+    department = Column(String(64), comment="部门")
+    role = Column(Integer, default=1, comment="角色1-普通用户，2-教师")
 
 class UserLLMConfig(Base):
     __tablename__ = "models"

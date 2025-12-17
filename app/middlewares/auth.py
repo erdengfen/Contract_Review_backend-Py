@@ -31,6 +31,7 @@ default_exclude_paths = [
     "/static/**",
     "/api/user/create",
     "/api/user/login",
+    "/api/user/refresh",
     "/api/user/cas_login",
     "/api/user/cas_callback",
     "/api/contract/upload",
@@ -42,6 +43,16 @@ default_exclude_paths = [
 auth_scheme = HTTPBearer()
 
 redis_handler = RedisHandler()
+
+async def acquire_login_lock(user_id: str, ttl: int = 5) -> bool:
+    return redis_handler.set(
+        f"login:lock:{user_id}",
+        "1",
+        ex=ttl
+    )
+
+async def release_login_lock(user_id: str):
+    redis_handler.delete(f"login:lock:{user_id}")
 
 
 async def create_access_token(data: dict, expires_delta: timedelta | None = None):
@@ -88,7 +99,6 @@ async def create_refresh_token(data: dict, expires_delta: timedelta | None = Non
     if user_id:
         ex = int(expire.timestamp() - datetime.utcnow().timestamp())
         redis_handler.set(f"refresh_token:{user_id}", encoded_jwt, ex=ex)
-
     return encoded_jwt
 
 
@@ -117,6 +127,13 @@ async def verify_refresh_token(refresh_token: str):
         error = BaseSchema(code=401, msg="Invalid refresh token", data=None)
         # raise HTTPException(status_code=401, detail=error.dict())
         return error
+
+async def revoke_user_tokens(user_id: str):
+    """
+    使用户的 access_token 和 refresh_token 失效
+    """
+    redis_handler.delete(f"access_token:{user_id}")
+    redis_handler.delete(f"refresh_token:{user_id}")
 
 
 async def get_current_user(token: HTTPAuthorizationCredentials = Depends(auth_scheme), db: Session = Depends(get_db)):
