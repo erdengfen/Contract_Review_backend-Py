@@ -203,9 +203,9 @@ async def session_history_detail(
                 data=formatted_messages
             )
         elif session.session_type == SessionTypeEnum.REVIEW.value:
-            file_id=session.file_id
+            session_id=session.id
             # 获取审批任务相关信息
-            review_task = await CRUDReviewTask.get_review_task(db, file_id)
+            review_task = await CRUDReviewTask.get_review_task(db, session_id)
             if not review_task:
                 return GenericResponse(code=404, msg="合同审阅任务不存在")
             # 获取审批任务结果详情

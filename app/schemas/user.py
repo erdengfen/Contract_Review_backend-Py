@@ -46,3 +46,6 @@ class LoginResponse(BaseModel):
     access_token: Optional[str]=Field(None,description="访问令牌")
     token_type: Optional[str]=Field(None,description="令牌类型")
     refresh_token: Optional[str]=Field(None,description="刷新令牌")
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: Optional[str]=Field(None,description="刷新令牌")

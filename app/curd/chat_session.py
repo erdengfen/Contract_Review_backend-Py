@@ -37,15 +37,17 @@ class CRUDSession:
                                 limit: int = 10,
                                 session_type: Optional[str] = None):
         """分页获取用户的会话历史"""
+        query = db.query(Session).filter(Session.user_id == user_id)
+
+        if session_type:
+            query = query.filter(Session.session_type == session_type)
+
         query = (
-            db.query(Session)
-            .filter(Session.user_id == user_id)
+            query
             .order_by(Session.created_at.desc())
             .offset(skip)
             .limit(limit)
         )
-        if session_type:
-            query = query.filter(Session.session_type == session_type)
         return query.all()
 
     @staticmethod

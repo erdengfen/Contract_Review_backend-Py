@@ -5,17 +5,23 @@
 @Author  ：潘尚国
 @Date    ：2025/11/4 10:46 
 """
-from pydantic import BaseModel, Field
+from datetime import datetime
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 
 
 class SessionResponse(BaseModel):
     """创建会话响应体"""
-    session_id: int = Field(..., description="会话ID")
+    session_id: int = Field(..., description="会话ID", alias="id")
     title: str = Field(..., description="会话主题")
     session_type: str = Field(..., description="会话类型")
     file_id: Optional[int] = Field(None, description="关联文件ID")
-    created_at: str = Field(..., description="创建时间")
+    created_at: Optional[datetime] = Field(..., description="创建时间")
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        populate_by_name=True
+    )
 
 class CreateSessionRequest(BaseModel):
     """创建会话请求体"""
@@ -32,7 +38,7 @@ class ListSessionRequest(BaseModel):
 
 class SessionListResponse(BaseModel):
     """会话列表响应体"""
-    data: Optional[List[SessionResponse]] = Field(None, description="会话列表")
+    sessions: Optional[List[SessionResponse]] = Field(None, description="会话列表")
     total: int = Field(..., description="会话总数")
 
 
