@@ -14,9 +14,34 @@ from difflib import SequenceMatcher
 
 
 def read_docx_paragraphs(path: str) -> List[str]:
-    """读取 docx 段落并移除空行。"""
+    """
+    读取 docx 中的文本行：
+    - 普通段落
+    - 表格中的每一行（按单元格拼接）
+    统一返回为一维文本列表，方便做段落级比对。
+    """
     doc = Document(path)
-    return [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+    lines: List[str] = []
+
+    # 普通段落
+    for p in doc.paragraphs:
+        text = p.text.strip()
+        if text:
+            lines.append(text)
+
+    # 表格内容：按「一行一个文本行」抽取
+    for table in doc.tables:
+        for row in table.rows:
+            cell_texts = []
+            for cell in row.cells:
+                t = cell.text.strip()
+                if t:
+                    cell_texts.append(t)
+            if cell_texts:
+                # 使用制表符拼接，前端可以根据需要再拆分或识别
+                lines.append("\t".join(cell_texts))
+
+    return lines
 
 
 def _build_char_diff(std_text: str, cmp_text: str) -> List[Dict[str, Any]]:

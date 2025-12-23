@@ -143,7 +143,13 @@ def test_inspect_large_file_once():
     for item in result["diffs"][:5]:
         print(item)
 
-
-
+def test_diff_documents(base_dir = BASE_DIR):
+    """
+    测试比对两个文件
+    """
+    std_path = base_dir / "data/graph_std.docx"
+    cmp_path = base_dir / "data/graph_cmp.docx"
+    result = diff_docs(str(std_path), str(cmp_path))
+    print(result)
 
 
