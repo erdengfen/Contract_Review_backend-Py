@@ -37,7 +37,7 @@ default_exclude_paths = [
     "/api/contract/upload",
     "/login/",
     "/logout/",
-    "/cas_callback"
+    "/cas_callback",
 ]
 
 auth_scheme = HTTPBearer()

@@ -5,7 +5,7 @@ LLM初始化模块
 from langchain_openai import ChatOpenAI
 from app.config.config import settings
 from openai import AsyncClient
-
+from httpx import Client
 from app.schemas.model_configs import ModelConfigResponse
 
 
@@ -19,12 +19,16 @@ def init_llm():
         raise ValueError("LLM API密钥未设置")
     print(api_key, api_base, model)
 
+    # http_client = Client(timeout=30.0)
+
     return ChatOpenAI(
         model_name=model,
         openai_api_key=api_key,
         openai_api_base=api_base,
         temperature=0.7,
         max_tokens=512,
+        timeout=15.0,
+        # http_client=http_client,
     )
 #from langchain.chat_models import init_chat_model
 #

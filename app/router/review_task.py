@@ -16,8 +16,9 @@ from sse_starlette.sse import EventSourceResponse
 from sqlalchemy.orm import Session as DBSession
 
 from app.middlewares.auth import get_current_user
+from app.schemas.base import GenericResponse
 from app.schemas.review_task import (
-    ReviewTaskCreateRequest,ReviewTaskSSEResponse
+    ReviewTaskCreateRequest, ReviewTaskSSEResponse, AcceptRiskPointRequest
 )
 from app.curd.review_task import CRUDReviewTask, CRUDReviewResult
 from app.curd.contract_file import CRUDContract
@@ -157,4 +158,25 @@ async def start_task(
 
     return EventSourceResponse(event_generator())
 
+@router.post("/accept_risk_point", summary="接受风险点修订",dependencies=[])
+async def accept_risk_point(
+        request: AcceptRiskPointRequest,
+        current_user: User = Depends(get_current_user),
+        db: DBSession = Depends(get_db)
+):
+    print("="*50)
+    if not current_user:
+        return GenericResponse(code=401, msg="用户未登录")
+    success = await CRUDReviewResult.accept_risk_point(
+        db=db,
+        session_id=request.session_id,
+        task_id=request.task_id,
+        index=request.index,
+        is_accepted=request.is_accepted,
+        user_id=current_user.id,
+    )
 
+    if not success:
+        return GenericResponse(code=400, msg="风险点不存在或未发生变更")
+
+    return GenericResponse(code=200, msg="操作成功", data=True)

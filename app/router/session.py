@@ -6,7 +6,7 @@
 @Date    ：2025/11/4 10:38 
 """
 import json
-from typing import List
+from typing import List, Union
 
 from fastapi import APIRouter, Depends
 
@@ -22,8 +22,9 @@ from sqlalchemy.orm import Session as DBSession
 from app.models import Message
 from app.models.session_message import SessionTypeEnum
 from app.schemas.base import GenericResponse
-from app.schemas.session import SessionResponse, SessionListResponse, ListSessionRequest, CreateSessionRequest, \
-    UpdateSessionTitleRequest, DeleteSessionRequest, SessionHistoryDetailRequest
+from app.schemas.session import SessionResponse, ListSessionRequest, CreateSessionRequest, \
+    UpdateSessionTitleRequest, DeleteSessionRequest, SessionHistoryDetailRequest, ReviewSessionListResponse, \
+    CompareSessionListResponse
 from app.schemas.comparison_task import ComparisonHistoryResponse, FileInfo
 
 router = APIRouter(tags=["会话管理"])
@@ -75,7 +76,9 @@ async def create_session(
 
 
 @router.post("/list_sessions",
-             response_model=GenericResponse[SessionListResponse],
+             response_model=GenericResponse[
+                 Union[ReviewSessionListResponse, CompareSessionListResponse]
+             ],
              summary="获取用户会话列表（根据会话类型）")
 async def list_sessions(
         request: ListSessionRequest,
@@ -91,7 +94,7 @@ async def list_sessions(
                 msg="页码和每页数量必须大于等于1"
             )
         skip=(request.page - 1) * request.page_size
-        sessions=await  CRUDSession.get_user_sessions(
+        sessions = await  CRUDSession.get_user_sessions(
             db=db,
             user_id=current_user.id,
             skip=skip,
@@ -101,13 +104,21 @@ async def list_sessions(
         total = await  CRUDSession.count_user_sessions(db=db,
                                                        user_id=current_user.id,
                                                        session_type=request.session_type)
+        if request.session_type == "review":
+            data = ReviewSessionListResponse(
+                sessions=sessions, total=total
+            )
+        elif request.session_type == "compare":
+            data = CompareSessionListResponse(
+                sessions=sessions, total=total
+            )
+        else:
+            raise Exception(f"会话类型 {request.session_type} 不合法")
+
         return GenericResponse(
             code=200,
             msg="会话列表获取成功",
-            data=SessionListResponse(
-                total=total,
-                sessions=sessions
-            )
+            data=data
         )
 
 @router.post("/update_session_title",

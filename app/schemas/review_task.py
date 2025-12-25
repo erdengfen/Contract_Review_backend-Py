@@ -9,6 +9,11 @@ from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, Field
 
+class AcceptRiskPointRequest(BaseModel):
+    session_id: int = Field(..., description="会话ID")
+    task_id: int = Field(..., description="审阅任务ID")
+    index: int = Field(..., description="索引")
+    is_accepted: int = Field( 0, description="是否接受修改")
 
 class ReviewTaskCreateRequest(BaseModel):
     """创建审阅任务请求"""
@@ -75,5 +80,4 @@ class ReviewTaskDetailResponse(BaseModel):
     task: ReviewTaskResponse = Field(..., description="任务详情")
     results: List[ReviewResultResponse] = Field(..., description="结果列表")
     risk_items: List[RiskItemResponse] = Field(..., description="风险项列表")
-
 

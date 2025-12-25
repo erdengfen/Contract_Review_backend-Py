@@ -7,10 +7,11 @@
 """
 
 from datetime import datetime
-from sqlalchemy.orm import Session as DBSession
-from app.models import Session, Message
-from typing import Optional
+from sqlalchemy.orm import Session as DBSession, aliased
+from app.models import Session, Message, ContractFile, ComparisonTask
+from typing import Optional, List, Any, Coroutine
 from app.curd.comparison_task import CRUDComparisonTask
+from app.schemas.session import ReviewSessionResponse, CompareSessionResponse
 
 class CRUDSession:
 
@@ -33,22 +34,116 @@ class CRUDSession:
     @staticmethod
     async def get_user_sessions(db: DBSession,
                                 user_id: int,
+                                session_type:str,
                                 skip: int = 0,
                                 limit: int = 10,
-                                session_type: Optional[str] = None):
+                                ) -> list[ReviewSessionResponse] | list[CompareSessionResponse] | list[Any]:
         """分页获取用户的会话历史"""
-        query = db.query(Session).filter(Session.user_id == user_id)
+        if session_type == 'review':
+            query = (
+                db.query(
+                    Session.id,
+                    Session.title,
+                    Session.session_type,
+                    Session.file_id,
+                    Session.created_at,
+                    ContractFile.party_a,
+                    ContractFile.party_b,
+                    ContractFile.is_accepted,
+                )
+                .outerjoin(
+                    ContractFile,
+                    Session.file_id == ContractFile.id
+                )
+                .filter(
+                    Session.user_id == user_id,
+                    Session.session_type == session_type
+                )
+                .order_by(Session.created_at.desc())
+                .offset(skip)
+                .limit(limit)
+            )
 
-        if session_type:
-            query = query.filter(Session.session_type == session_type)
+            rows = query.all()
 
-        query = (
-            query
-            .order_by(Session.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-        )
-        return query.all()
+            return [
+                ReviewSessionResponse(
+                    id=row.id,
+                    title=row.title,
+                    session_type=row.session_type,
+                    file_id=row.file_id,
+                    created_at=row.created_at,
+                    party_a=row.party_a,
+                    party_b=row.party_b,
+                    is_accepted=bool(row.is_accepted) if row.is_accepted is not None else False,
+                )
+                for row in rows
+            ]
+        elif session_type == 'compare':
+            ContractFile1 = aliased(ContractFile)
+            ContractFile2 = aliased(ContractFile)
+
+            query = (
+                db.query(
+                    Session.id,
+                    Session.title,
+                    Session.session_type,
+                    Session.created_at,
+
+                    ContractFile1.id.label("file_id"),
+                    ContractFile1.party_a.label("party_a"),
+                    ContractFile1.party_b.label("party_b"),
+                    ContractFile1.is_accepted.label("is_accepted"),
+
+                    ContractFile2.id.label("file_id_2"),
+                    ContractFile2.party_a.label("party_a_2"),
+                    ContractFile2.party_b.label("party_b_2"),
+                    ContractFile2.is_accepted.label("is_accepted_2"),
+                )
+                .outerjoin(
+                    ComparisonTask,
+                    ComparisonTask.session_id == Session.id
+                )
+                .outerjoin(
+                    ContractFile1,
+                    ContractFile1.id == ComparisonTask.standard_file_id
+                )
+                .outerjoin(
+                    ContractFile2,
+                    ContractFile2.id == ComparisonTask.comparison_file_id
+                )
+                .filter(
+                    Session.user_id == user_id,
+                    Session.session_type == session_type
+                )
+                .order_by(Session.created_at.desc())
+                .offset(skip)
+                .limit(limit)
+            )
+
+            rows = query.all()
+
+            return [
+                CompareSessionResponse(
+                    id=row.id,
+                    title=row.title,
+                    session_type=row.session_type,
+                    created_at=row.created_at,
+
+                    file_id=row.file_id,
+                    party_a=row.party_a,
+                    party_b=row.party_b,
+                    is_accepted=bool(row.is_accepted) if row.is_accepted is not None else False,
+
+                    file_id_2=row.file_id_2,
+                    party_a_2=row.party_a_2,
+                    party_b_2=row.party_b_2,
+                    is_accepted_2=bool(row.is_accepted_2) if row.is_accepted_2 is not None else False,
+                )
+                for row in rows
+            ]
+        else:
+            return []
 
     @staticmethod
     async def count_user_sessions(db: DBSession, user_id: int, session_type: Optional[str] = None) -> int:

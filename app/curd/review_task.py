@@ -8,9 +8,10 @@
 from datetime import datetime
 from typing import Optional, List, Type
 from sqlalchemy.orm import Session as DBSession
-from sqlalchemy import desc
+from sqlalchemy import desc, update
 
 from app.curd.chat_session import CRUDSession
+from app.models import Session
 from app.models.review import ReviewTask, ReviewResult
 from app.schemas.review_task import ReviewTaskCreateRequest
 
@@ -155,6 +156,27 @@ class CRUDReviewResult:
             db.commit()
             return True
         return False
+
+    @staticmethod
+    async def accept_risk_point(db: DBSession, session_id: int, task_id: int, index: int, is_accepted: int, user_id: int) -> bool:
+        """根据会话ID及索引 调整接受风险点设置"""
+        obj = (
+            db.query(ReviewResult)
+            .filter(
+                ReviewResult.session_id == session_id,
+                ReviewResult.task_id == task_id,
+                ReviewResult.index == index,
+                Session.user_id == user_id,
+            )
+            .one_or_none()
+        )
+
+        if obj is None:
+            return False
+
+        obj.is_accepted = is_accepted
+        db.commit()
+        return True
     # -----------------------
     # @staticmethod
     # def get_review_result(db: DBSession, result_id: int):

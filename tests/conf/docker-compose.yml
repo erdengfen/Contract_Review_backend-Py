@@ -1,0 +1,19 @@
+version: '3.8'  # 兼容的 docker-compose 版本
+services:
+  mysql:
+    image: library/mysql:8.0  # 使用的镜像
+    container_name: mysql-service  # 容器名称
+    restart: always  # 容器异常退出时自动重启
+    ports:
+      - "3306:3306"  # 端口映射（宿主机:容器）
+    environment:
+      # 初始化环境变量（容器首次启动时生效）
+      MYSQL_ROOT_PASSWORD: chongqinglingdong123456  # root 用户密码
+      MYSQL_DATABASE:   # 自动创建的数据库名称
+      MYSQL_USER: appuser  # 自动创建的普通用户
+      MYSQL_PASSWORD: 123123 # 普通用户密码
+    volumes:
+      # 目录挂载（宿主机目录:容器目录）
+      - /home/cqupt/data/mysql/conf:/etc/mysql/conf.d  # 配置文件目录
+      - /home/cqupt/data/mysql/data:/var/lib/mysql     # 数据文件目录
+      - /home/cqupt/data/mysql/logs:/var/log/mysql     # 日志文件目录

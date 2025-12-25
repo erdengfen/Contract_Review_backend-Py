@@ -23,30 +23,39 @@ cas_config:
   vanna_url_online: vanna:8084
 
 openai_config:
-  api_base: "https://dashscope.aliyuncs.com/compatible-mode/v1"
-  api_key: "sk-561f4f1fcfb9480898ea821083a5ba95"
-  model: "qwen-turbo"
+  api_key: "ec4d5789-6945-4f0e-9ff9-7d6f10ccfff8"
+  # api_key: "sk-8715838624b44ad4b5072f7a6e0c970c" #deepseek
+  api_base: "https://ark.cn-beijing.volces.com/api/v3"
+  model: "doubao-seed-1-6-250615"
+
+#openai_config: # 千问
+#  api_key: "sk-8d99249eb58648acb91f00e38af84df1"
+#  api_base: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+#  model: "qwen-plus"
 
 database:
+  host: 127.0.0.1
 #  host: mysql-prod
-  host: 172.22.182.59
+#  host: 172.22.182.59
   port: 3306
   name: "contract_review"
   username: root
-  password: "chongqinglingdong123456"
+#  password: "chongqinglingdong123456"
   pool_size: 10
   pool_timeout: 30
 
 
 mcp_server:
-  url: "http://127.0.0.1:8081/mcp/"
+  url: "http://mcp-server:8081/mcp/"
+#  url: "http://127.0.0.1:8081/mcp/"
 
 redis_config:
+  host: 127.0.0.1
 #  host: redis-prod
-  host: 172.22.182.59
+#  host: 172.22.182.59
   port: 6379
   db: 10
-  password: "chongqinglingdong123456"
+#  password: "chongqinglingdong123456"
   decode_responses: True
   max_connections: 20
   socket_connect_timeout: 5

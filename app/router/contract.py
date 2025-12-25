@@ -32,34 +32,61 @@ router = APIRouter(tags=["合同管理"])
 """
 
 
-def parse_contract_info(raw_output) -> dict:
-    pattern = r"```json\n(.*?)\n?```"
-    model_output=""
-    match = re.search(pattern, raw_output, re.DOTALL)
-    if match:
-        model_output = match.group(1)
-        print(model_output)
+# def parse_contract_info(raw_output) -> dict:
+#     pattern = r"```json\n(.*?)\n?```"
+#     model_output=""
+#     match = re.search(pattern, raw_output, re.DOTALL)
+#     if match:
+#         model_output = match.group(1)
+#         print(model_output)
+#
+#     try:
+#         data = json.loads(model_output)
+#         party_a = data.get("party_a", "")
+#         party_b = data.get("party_b", "")
+#         amount = data.get("amount", "").replace("元", "")
+#         def clean(val):
+#             if not isinstance(val, str):
+#                 return ""
+#             if "{未识别}" in val or len(val) > 300:
+#                 return ""
+#             return val.strip()
+#
+#         return {
+#             "party_a": clean(party_a),
+#             "party_b": clean(party_b),
+#             "amount": clean(amount)
+#         }
+#
+#     except Exception as e:
+#         return {"party_a": "", "party_b": "", "amount": ""}
 
+def parse_contract_info(raw_output: str) -> dict:
+    raw_output = raw_output.strip()
+
+    # 尝试直接解析 JSON
     try:
-        data = json.loads(model_output)
-        party_a = data.get("party_a", "")
-        party_b = data.get("party_b", "")
-        amount = data.get("amount", "").replace("元", "")
-        def clean(val):
-            if not isinstance(val, str):
-                return ""
-            if "{未识别}" in val or len(val) > 300:
-                return ""
-            return val.strip()
+        data = json.loads(raw_output)
+    except Exception:
+        # 如果不能解析，再尝试提取大括号中的内容
+        try:
+            json_text = re.search(r"\{[\s\S]*\}", raw_output).group(0)
+            data = json.loads(json_text)
+        except Exception:
+            return {"party_a": "", "party_b": "", "amount": ""}
 
-        return {
-            "party_a": clean(party_a),
-            "party_b": clean(party_b),
-            "amount": clean(amount)
-        }
+    def clean(val):
+        if not isinstance(val, str):
+            return ""
+        if "{未识别}" in val or len(val) > 300:
+            return ""
+        return val.strip()
 
-    except Exception as e:
-        return {"party_a": "", "party_b": "", "amount": ""}
+    return {
+        "party_a": clean(data.get("party_a", "")),
+        "party_b": clean(data.get("party_b", "")),
+        "amount": clean(data.get("amount", "").replace("元", "")),
+    }
 
 @router.post("/upload", response_model=GenericResponse[UploadResponse], summary="上传合同文件")
 async def upload_contract_file(
@@ -92,7 +119,8 @@ async def upload_contract_file(
         else:
             # contract_content = docx2md(save_path, None)
             contract_content = docx2text(save_path)
-        contract_type =  llm_client.invoke(
+
+        contract_type =  await llm_client.ainvoke(
             [
                 SystemMessage(content="""
                 你是一个专业的合同信息提取引擎，请严格遵守以下规则：
@@ -132,7 +160,6 @@ async def upload_contract_file(
                 HumanMessage(content=f"请提取以下文档中的合同信息：\n\n{contract_content[:5000]}")
             ]
         )
-        # 解析合同类型
         contract_type = parse_contract_info(contract_type.content)
 
         party_a = contract_type["party_a"]
