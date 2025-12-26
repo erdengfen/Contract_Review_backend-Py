@@ -9,11 +9,17 @@ from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, Field
 
+class AcceptContractFile(BaseModel):
+    """接受合同修订请求"""
+    file_id: int = Field(...,description="合同文件ID")
+    is_accepted: int = Field(...,description="是否接受修改0/1")
+
 class AcceptRiskPointRequest(BaseModel):
+    """接受风险点修订请求"""
     session_id: int = Field(..., description="会话ID")
     task_id: int = Field(..., description="审阅任务ID")
     index: int = Field(..., description="索引")
-    is_accepted: int = Field( 0, description="是否接受修改")
+    is_accepted: int = Field(..., description="是否接受修改0/1")
 
 class ReviewTaskCreateRequest(BaseModel):
     """创建审阅任务请求"""

@@ -19,7 +19,7 @@ class RedisClient:
             cls._pool = redis.ConnectionPool(
                 host=settings.redis_config.host,
                 port=settings.redis_config.port,
-                # password=settings.redis_config.password,
+                password=settings.redis_config.password,
                 db=settings.redis_config.db,
                 decode_responses=settings.redis_config.decode_responses,
                 max_connections=settings.redis_config.max_connections,

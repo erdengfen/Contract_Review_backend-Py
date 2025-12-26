@@ -101,5 +101,5 @@ app.include_router(cas_auth.router, tags=["CAS认证"])
 
 
 import yaml
-if __name__ == "__main__":
-    uvicorn.run(app, host=settings.server.host, port=settings.server.port)
+# if __name__ == "__main__":
+#     uvicorn.run(app, host=settings.server.host, port=settings.server.port)

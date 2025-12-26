@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session as DBSession
 from sqlalchemy import desc, update
 
 from app.curd.chat_session import CRUDSession
-from app.models import Session
+from app.models import Session, ContractFile
 from app.models.review import ReviewTask, ReviewResult
 from app.schemas.review_task import ReviewTaskCreateRequest
 
@@ -160,6 +160,7 @@ class CRUDReviewResult:
     @staticmethod
     async def accept_risk_point(db: DBSession, session_id: int, task_id: int, index: int, is_accepted: int, user_id: int) -> bool:
         """根据会话ID及索引 调整接受风险点设置"""
+        print(session_id, task_id, index, is_accepted, user_id)
         obj = (
             db.query(ReviewResult)
             .filter(
@@ -171,12 +172,33 @@ class CRUDReviewResult:
             .one_or_none()
         )
 
+        print(obj)
         if obj is None:
             return False
 
         obj.is_accepted = is_accepted
         db.commit()
         return True
+
+    @staticmethod
+    async def accept_contract_file(db: DBSession, is_accepted: int, user_id: int, file_id: int) -> bool:
+        """设置合同是否接受修订"""
+        obj = (
+            db.query(ContractFile)
+            .filter(
+                ContractFile.id == file_id,
+                ContractFile.user_id == user_id,
+            )
+            .one_or_none()
+        )
+
+        if obj is None:
+            return False
+
+        obj.is_accepted = is_accepted
+        db.commit()
+        return True
+
     # -----------------------
     # @staticmethod
     # def get_review_result(db: DBSession, result_id: int):

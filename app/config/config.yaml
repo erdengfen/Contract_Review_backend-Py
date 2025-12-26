@@ -34,13 +34,13 @@ openai_config:
 #  model: "qwen-plus"
 
 database:
-  host: 127.0.0.1
-#  host: mysql-prod
+#  host: 127.0.0.1
+  host: mysql-prod
 #  host: 172.22.182.59
   port: 3306
   name: "contract_review"
   username: root
-#  password: "chongqinglingdong123456"
+  password: "chongqinglingdong123456"
   pool_size: 10
   pool_timeout: 30
 
@@ -50,12 +50,12 @@ mcp_server:
 #  url: "http://127.0.0.1:8081/mcp/"
 
 redis_config:
-  host: 127.0.0.1
-#  host: redis-prod
+#  host: 127.0.0.1
+  host: redis-prod
 #  host: 172.22.182.59
   port: 6379
   db: 10
-#  password: "chongqinglingdong123456"
+  password: "chongqinglingdong123456"
   decode_responses: True
   max_connections: 20
   socket_connect_timeout: 5
