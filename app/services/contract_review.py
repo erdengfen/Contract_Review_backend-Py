@@ -9,7 +9,7 @@ from pathlib import Path
 
 from langchain_core.messages import SystemMessage, HumanMessage
 from ..core.llm import init_llm
-from ..utils.mcp_client import MCPClient
+# from ..utils.mcp_client import MCPClient
 
 # from ..utils.content_slicer import split_text_by_length
 
@@ -20,7 +20,7 @@ class ContractReviewService:
     """合同审阅服务"""
 
     # 初始化函数
-    def __init__(self, mcp_client: MCPClient):
+    def __init__(self, mcp_client):
         self.llm = init_llm()
         self.mcp_client = mcp_client
 

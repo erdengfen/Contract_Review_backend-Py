@@ -1,5 +1,6 @@
 from typing import Dict
-from langchain.schema import SystemMessage, HumanMessage
+# from langchain.schema import SystemMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from docx import Document
 from typing import List
 import pdfplumber

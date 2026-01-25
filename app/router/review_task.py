@@ -8,6 +8,7 @@
 import logging
 import asyncio
 import json
+import time
 from re import A
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
@@ -69,20 +70,23 @@ async def start_task(
                 ReviewTaskSSEResponse(event="error", data={"message": "当前文件为上传文件，不支持审阅"}).model_dump(),
                 ensure_ascii=False
             )
-
+        mcp_init_time=time.time()
         mcp_client = MCPClient()
         await mcp_client.initialize()
+        print(f"mcp init time: {time.time()-mcp_init_time}")
         contract_review_service = ContractReviewService(mcp_client)
         contract_content_path = contract.contract_content_path
         with open(contract_content_path, "r", encoding="utf-8") as f:
             contract_content = f.read()
 
         model_config = await get_default_model_by_type(db, model_type="chat")
-
+        openai_start_time=time.time()
+        print(f"数据库模型：{model_config.api_key},{model_config.api_endpoint}，{model_config}")
         async_client = AsyncClient(
             api_key=model_config.api_key,
             base_url=model_config.api_endpoint
         )
+        print(f"openai init time: {time.time()-openai_start_time}")
         chunks = split_text_by_length(contract_content, max_length=4000)
         n = len(chunks)
 
@@ -101,7 +105,7 @@ async def start_task(
                         context, contract_type=review_task.contract_type
                     )
             except Exception as e:
-                logger.error(f"Chunk {idx} 审阅失败: {e}")
+                # logger.error(f"Chunk {idx} 审阅失败: {e}")
                 mods = []
             await result_queue.put((idx, mods))
 
@@ -131,7 +135,7 @@ async def start_task(
                             ensure_ascii=False
                         )
                         global_index += 1
-                    logger.info(f"Chunk {next_to_emit} 完成，产出 {len(current_mods)} 条")
+                    # logger.info(f"Chunk {next_to_emit} 完成，产出 {len(current_mods)} 条")
                     next_to_emit += 1
 
             total_issues = global_index - 1

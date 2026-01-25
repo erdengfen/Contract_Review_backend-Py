@@ -28,7 +28,7 @@ class ReviewTaskCreateRequest(BaseModel):
     intensity: str = Field(..., description="审查尺度（严格/标准/宽松）")
     description: Optional[str] = Field(None, description="审查需求描述")
     contract_type: Optional[str] = Field(..., description="合同类型")
-    max_concurrent: Optional[int] = Field(5, description="最大并发数")
+    max_concurrent: Optional[int] = Field(20, description="最大并发数")
 
 
 class ReviewTaskResponse(BaseModel):
