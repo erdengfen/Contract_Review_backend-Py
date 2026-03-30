@@ -24,7 +24,6 @@ alembic.ini
 __pycache__/
 /temp/
 
-/uv.lock
 /output/output.md
 /output/
 /data/
