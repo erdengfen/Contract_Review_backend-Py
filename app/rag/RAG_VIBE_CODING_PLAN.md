@@ -5,6 +5,31 @@
 - 召回结果必须同时包含“外部法律依据”和“内部审阅规则”。
 - RAG 结果要被安全、可追溯地拼入 prompt，以提升审阅准确度。
 
+## Document Maintenance Rule
+- 每次在 `app/rag/` 下新增或修改代码后，必须同步更新本文件。
+- 本文件必须持续维护“已完成”“未完成”“下一步”三部分。
+- 若实现顺序偏离计划，必须记录原因，避免后续 agent 误判状态。
+
+## Current Progress
+
+### 已完成
+- 已创建 `app/rag/` 包和 `clients/` 子包初始化文件。
+- 已创建 `app/rag/config.py`，完成 RAG 配置骨架。
+- 已创建 `app/rag/schemas.py`，完成基础 schema 骨架。
+- 已创建 `app/rag/clients/qdrant_client.py`，完成 Qdrant 客户端骨架。
+- 已创建 `app/rag/clients/embedding_local.py`，完成本地 embedding 客户端骨架。
+- 已创建 `app/rag/clients/embedding_remote.py`，完成远程 embedding 客户端骨架。
+- 已完成本轮新增文件的中文化注释、docstring 和字段描述整理。
+- 已完成最小语法检查与导入验证。
+
+### 未完成
+- 尚未把 `app/rag/config.py` 接入现有主配置系统。
+- 尚未安装和接入 `qdrant-client`。
+- 尚未实现本地 embedding 后端。
+- 尚未实现远程 embedding provider 的业务接线。
+- 尚未实现 retriever、多路 query、融合、rerank、context builder。
+- 尚未接入 `app/services/contract_review.py`。
+
 ## Constraints
 - Qdrant 必须独立容器部署。
 - collection 必须拆分为：
@@ -184,6 +209,13 @@
 14. `services/context_builder.py`
 15. `services/rag_service.py`
 16. 接入 `app/services/contract_review.py`
+
+## Next Step
+1. `app/rag/retrievers/multi_query.py`
+2. `app/rag/retrievers/hybrid_fusion.py`
+3. `app/rag/retrievers/external_legal_retriever.py`
+4. `app/rag/retrievers/internal_rules_retriever.py`
+5. `app/rag/retrievers/reranker.py`
 
 ## Non-Goals For First Iteration
 - 不要第一版就做复杂评测平台。
