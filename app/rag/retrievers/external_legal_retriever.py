@@ -1,0 +1,177 @@
+"""
+外部法律库检索器。
+"""
+from __future__ import annotations
+
+import hashlib
+import re
+from types import SimpleNamespace
+from typing import Any
+
+from qdrant_client.http import models
+
+from app.rag.config import RagConfig
+from app.rag.retrievers.hybrid_fusion import reciprocal_rank_fusion, take_top_k
+from app.rag.schemas import RetrievalHit, RetrievalRequest
+
+
+class ExternalLegalRetriever:
+    """
+    面向 `external_legal_kb` 的检索器。
+    """
+
+    def __init__(self, qdrant_client: Any, embedding_client: Any, config: RagConfig):
+        self.qdrant_client = qdrant_client
+        self.embedding_client = embedding_client
+        self.config = config
+
+    def _tokenize(self, text: str) -> list[str]:
+        tokens = re.findall(r"[\u4e00-\u9fff]+|[A-Za-z0-9_]+", text)
+        return [token.lower() for token in tokens if token.strip()]
+
+    def _build_sparse_query(self, text: str) -> models.SparseVector:
+        token_counts: dict[int, float] = {}
+        for token in self._tokenize(text):
+            index = int(hashlib.md5(token.encode("utf-8")).hexdigest()[:8], 16) % 50000
+            token_counts[index] = token_counts.get(index, 0.0) + 1.0
+        indices = sorted(token_counts.keys())
+        values = [token_counts[index] for index in indices]
+        return models.SparseVector(indices=indices, values=values)
+
+    def _build_filters(self, request: RetrievalRequest):
+        field_filters = {
+            "region": request.filters.region or self.config.filters.default_region,
+            "industry": request.filters.industry or self.config.filters.default_industry,
+            "effective_status": "effective" if self.config.filters.exclude_invalid_regulations else None,
+        }
+        return self.qdrant_client.build_match_filter(field_filters)
+
+    def _extract_points(self, response: Any) -> list[Any]:
+        if response is None:
+            return []
+        if isinstance(response, list):
+            return response
+        if hasattr(response, "points"):
+            return list(response.points)
+        if isinstance(response, dict) and "points" in response:
+            return list(response["points"])
+        return []
+
+    def _point_to_hit(self, point: Any) -> RetrievalHit:
+        payload = getattr(point, "payload", {}) or {}
+        point_id = getattr(point, "id", payload.get("doc_id", ""))
+        score = float(getattr(point, "score", 0.0))
+        return RetrievalHit(
+            source_collection="external_legal_kb",
+            record_id=str(point_id),
+            title=payload.get("title", ""),
+            content=payload.get("content", ""),
+            score=score,
+            article_no=payload.get("article_no"),
+            source_type=payload.get("source_type"),
+            payload=payload,
+        )
+
+    def retrieve_by_query(self, query_text: str, request: RetrievalRequest) -> list[RetrievalHit]:
+        limit = self.config.retrieval.per_route_top_k
+        query_filter = self._build_filters(request)
+        ranked_lists: list[list[RetrievalHit]] = []
+
+        if self.config.retrieval.enable_dense:
+            dense_vector = self.embedding_client.embed_query(query_text)
+            dense_response = self.qdrant_client.search_dense(
+                self.config.qdrant.external_collection,
+                dense_vector,
+                limit=limit,
+                query_filter=query_filter,
+            )
+            dense_hits = [self._point_to_hit(point) for point in self._extract_points(dense_response)]
+            ranked_lists.append(dense_hits)
+
+        if self.config.retrieval.enable_sparse:
+            sparse_query = self._build_sparse_query(query_text)
+            sparse_response = self.qdrant_client.search_sparse(
+                self.config.qdrant.external_collection,
+                sparse_query,
+                limit=limit,
+                query_filter=query_filter,
+            )
+            sparse_hits = [self._point_to_hit(point) for point in self._extract_points(sparse_response)]
+            ranked_lists.append(sparse_hits)
+
+        fused = reciprocal_rank_fusion(ranked_lists)
+        return take_top_k(fused, self.config.retrieval.final_external_top_k)
+
+
+class _FakeEmbeddingClient:
+    def embed_query(self, text: str) -> list[float]:
+        return [0.1, 0.2, 0.3]
+
+
+class _FakeQdrantClient:
+    def build_match_filter(self, field_filters: dict[str, Any]):
+        return {"must": field_filters}
+
+    def search_dense(self, collection_name: str, query_vector: Any, limit: int, **kwargs):
+        return SimpleNamespace(
+            points=[
+                SimpleNamespace(
+                    id="law-1",
+                    score=0.91,
+                    payload={
+                        "title": "民法典",
+                        "content": "当事人应当按照约定全面履行义务。",
+                        "article_no": "第五百零九条",
+                        "source_type": "law",
+                    },
+                ),
+                SimpleNamespace(
+                    id="law-2",
+                    score=0.82,
+                    payload={
+                        "title": "招标投标法",
+                        "content": "招标投标活动应遵循公开公平公正原则。",
+                        "article_no": "第五条",
+                        "source_type": "law",
+                    },
+                ),
+            ]
+        )
+
+    def search_sparse(self, collection_name: str, sparse_query: Any, limit: int, **kwargs):
+        return SimpleNamespace(
+            points=[
+                SimpleNamespace(
+                    id="law-1",
+                    score=0.88,
+                    payload={
+                        "title": "民法典",
+                        "content": "当事人应当按照约定全面履行义务。",
+                        "article_no": "第五百零九条",
+                        "source_type": "law",
+                    },
+                )
+            ]
+        )
+
+
+def _main_test_external_retriever():
+    from app.rag.config import RagConfig
+
+    retriever = ExternalLegalRetriever(
+        qdrant_client=_FakeQdrantClient(),
+        embedding_client=_FakeEmbeddingClient(),
+        config=RagConfig(),
+    )
+    request = RetrievalRequest(
+        chunk_text="甲方逾期付款应承担违约责任。",
+        contract_type="服务合同",
+    )
+    hits = retriever.retrieve_by_query("付款条款 违约责任", request)
+    assert len(hits) >= 1
+    assert hits[0].record_id == "law-1"
+    print("ExternalLegalRetriever self test passed")
+
+
+if __name__ == "__main__":
+    _main_test_external_retriever()

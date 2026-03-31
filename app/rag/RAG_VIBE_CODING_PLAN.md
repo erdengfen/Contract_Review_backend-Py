@@ -31,6 +31,12 @@
 - 已将“每文件必须提供文件内自测入口”的要求写入局部 AGENTS 和开发文档。
 - 已为当前包含类或方法的 RAG 文件补齐 `if __name__ == "__main__":` 文件内自测入口。
 - 已完成 `config.py`、`schemas.py`、`qdrant_client.py`、`embedding_local.py`、`embedding_remote.py` 的文件内自测代码。
+- 已创建 `app/rag/retrievers/` 包。
+- 已创建 `app/rag/retrievers/multi_query.py`，完成多路 query 构造模块。
+- 已创建 `app/rag/retrievers/hybrid_fusion.py`，完成加权 RRF 融合模块。
+- 已创建 `app/rag/retrievers/external_legal_retriever.py`，完成外部法律库检索器首版。
+- 已创建 `app/rag/retrievers/internal_rules_retriever.py`，完成内部规则库检索器首版。
+- 已为上述 retriever 文件补齐文件内自测入口。
 
 ### 未完成
 - 尚未把 `app/rag/config.py` 接入现有主配置系统。
@@ -40,6 +46,10 @@
 - 尚未实现远程 embedding provider 的业务联调验证。
 - 尚未实现 retriever、多路 query、融合、rerank、context builder。
 - 尚未接入 `app/services/contract_review.py`。
+- 尚未实现跨 query 的统一编排服务。
+- 尚未实现 reranker。
+- 尚未实现 context builder。
+- 尚未实现真实 Qdrant 容器下的检索联调。
 
 ## Constraints
 - Qdrant 必须独立容器部署。
@@ -222,11 +232,11 @@
 16. 接入 `app/services/contract_review.py`
 
 ## Next Step
-1. `app/rag/retrievers/multi_query.py`
-2. `app/rag/retrievers/hybrid_fusion.py`
-3. `app/rag/retrievers/external_legal_retriever.py`
-4. `app/rag/retrievers/internal_rules_retriever.py`
-5. `app/rag/retrievers/reranker.py`
+1. `app/rag/retrievers/reranker.py`
+2. `app/rag/services/context_builder.py`
+3. `app/rag/services/rag_service.py`
+4. 将多路 query 与两个 collection 的检索器编排起来
+5. 接入 `app/services/contract_review.py`
 
 ## Non-Goals For First Iteration
 - 不要第一版就做复杂评测平台。
