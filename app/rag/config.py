@@ -222,3 +222,16 @@ class RagConfig(BaseModel):
 
 
 DEFAULT_RAG_CONFIG = RagConfig()
+
+
+def _main_test_config():
+    config = RagConfig()
+    assert config.enabled is True
+    assert config.embedding.provider_mode in {"local", "remote"}
+    assert config.qdrant.external_collection == "external_legal_kb"
+    assert config.qdrant.internal_collection == "internal_review_rules"
+    print("RagConfig self test passed")
+
+
+if __name__ == "__main__":
+    _main_test_config()

@@ -94,3 +94,48 @@ class RetrievalResponse(BaseModel):
     internal_hits: list[RetrievalHit] = Field(default_factory=list, description="内部规则命中结果。")
     fused_hits: list[RetrievalHit] = Field(default_factory=list, description="融合后的全部结果。")
     prompt_context: str = Field("", description="可直接注入 prompt 的检索上下文。")
+
+
+def _main_test_schemas():
+    external = ExternalLegalRecord(
+        doc_id="law-1",
+        source_type="law",
+        source_level="national",
+        title="民法典",
+        article_no="第五百零九条",
+        content="当事人应当按照约定全面履行自己的义务。",
+        region="CN",
+        effective_status="effective",
+    )
+    internal = InternalRuleRecord(
+        rule_id="rule-1",
+        rule_type="review_rule",
+        title="付款条款规则",
+        content="付款条款应明确付款条件与付款期限。",
+        organization_scope="global",
+        priority=10,
+        enabled=True,
+    )
+    request = RetrievalRequest(chunk_text="测试合同条款")
+    hit = RetrievalHit(
+        source_collection="external_legal_kb",
+        record_id=external.doc_id,
+        title=external.title,
+        content=external.content,
+        score=0.95,
+        article_no=external.article_no,
+        source_type=external.source_type,
+    )
+    response = RetrievalResponse(
+        external_hits=[hit],
+        fused_hits=[hit],
+        prompt_context="## 外部法律依据\n1. 民法典 第五百零九条",
+    )
+    assert request.chunk_text == "测试合同条款"
+    assert internal.enabled is True
+    assert response.external_hits[0].title == "民法典"
+    print("RAG schemas self test passed")
+
+
+if __name__ == "__main__":
+    _main_test_schemas()

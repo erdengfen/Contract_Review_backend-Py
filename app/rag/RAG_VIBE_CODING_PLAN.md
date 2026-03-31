@@ -9,6 +9,8 @@
 - 每次在 `app/rag/` 下新增或修改代码后，必须同步更新本文件。
 - 本文件必须持续维护“已完成”“未完成”“下一步”三部分。
 - 若实现顺序偏离计划，必须记录原因，避免后续 agent 误判状态。
+- `app/rag/` 下每个包含类或方法的 Python 文件，必须提供 `if __name__ == "__main__":` 自测入口。
+- 文件内自测必须覆盖该文件中的主要公共类和方法。
 
 ## Current Progress
 
@@ -21,12 +23,21 @@
 - 已创建 `app/rag/clients/embedding_remote.py`，完成远程 embedding 客户端骨架。
 - 已完成本轮新增文件的中文化注释、docstring 和字段描述整理。
 - 已完成最小语法检查与导入验证。
+- 已安装 `qdrant-client` 依赖。
+- 已安装 `sentence-transformers` 依赖。
+- 已将 `app/rag/clients/qdrant_client.py` 推进到真实 SDK 接线阶段。
+- 已将 `app/rag/clients/embedding_local.py` 推进到基于 `sentence-transformers` 的本地 embedding 接线阶段。
+- 已将 `app/rag/clients/embedding_remote.py` 保持为 OpenAI 兼容远程 embedding 客户端。
+- 已将“每文件必须提供文件内自测入口”的要求写入局部 AGENTS 和开发文档。
+- 已为当前包含类或方法的 RAG 文件补齐 `if __name__ == "__main__":` 文件内自测入口。
+- 已完成 `config.py`、`schemas.py`、`qdrant_client.py`、`embedding_local.py`、`embedding_remote.py` 的文件内自测代码。
 
 ### 未完成
 - 尚未把 `app/rag/config.py` 接入现有主配置系统。
-- 尚未安装和接入 `qdrant-client`。
-- 尚未实现本地 embedding 后端。
-- 尚未实现远程 embedding provider 的业务接线。
+- 尚未接入真实 Qdrant 容器并完成联通验证。
+- 尚未下载和验证本地 embedding 模型权重。
+- 尚未实现 sparse embedding 生成策略。
+- 尚未实现远程 embedding provider 的业务联调验证。
 - 尚未实现 retriever、多路 query、融合、rerank、context builder。
 - 尚未接入 `app/services/contract_review.py`。
 
