@@ -8,6 +8,10 @@ from pdf2image import convert_from_path
 import pytesseract
 import json
 import os
+from prompts.llm_prompt_vars import (
+    CONTRACT_PARTY_EXTRACTION_SYSTEM_PROMPT,
+    build_contract_party_extraction_user_prompt,
+)
 
 class ContractParser:
 
@@ -78,21 +82,12 @@ class ContractParser:
 
             # print(sample_text)
 
-            # 2. 构造提示词
-            base_prompt = f"""
-    你是一名专业的合同律师。请从以下合同内容中提取出甲方和乙方的名称以及合同金额（如果有简称，也一并标注）。
-    请严格以 JSON 格式输出结果，不要包含其他文字、说明或 Markdown 代码块。输出示例如下：
-    {{
-      "party_a": "xxx公司",
-      "party_b": "yyy公司",
-      "contract_value": "XXX"
-    }}
-    如果未找到，则用空字符串代替。
-    """
             # 3. 构造消息列表（与审阅部分一致）
             messages = [
-                SystemMessage(content="你是一个专业的合同信息提取助手。"),
-                HumanMessage(content=f"{base_prompt}\n\n合同内容:\n{sample_text}")
+                SystemMessage(content=CONTRACT_PARTY_EXTRACTION_SYSTEM_PROMPT),
+                HumanMessage(
+                    content=build_contract_party_extraction_user_prompt(sample_text)
+                ),
             ]
 
             # 4. 调用大模型
@@ -114,5 +109,4 @@ class ContractParser:
         except Exception as e:
             print(f"提取甲乙方失败: {e}")
             return {"party_a": "", "party_b": ""}
-
 

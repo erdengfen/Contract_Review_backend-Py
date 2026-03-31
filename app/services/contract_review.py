@@ -3,15 +3,25 @@
 """
 import logging
 import re
+import asyncio
 from typing import Dict, List, Any
 from datetime import datetime
 from pathlib import Path
-
+from types import SimpleNamespace
 from langchain_core.messages import SystemMessage, HumanMessage
-from ..core.llm import init_llm
-# from ..utils.mcp_client import MCPClient
 
-# from ..utils.content_slicer import split_text_by_length
+try:
+    from ..core.llm import init_llm
+    from prompts.llm_prompt_vars import (
+        REVIEW_SYSTEM_PROMPT,
+        build_contract_review_prompt,
+    )
+except ImportError:
+    from app.core.llm import init_llm
+    from prompts.llm_prompt_vars import (
+        REVIEW_SYSTEM_PROMPT,
+        build_contract_review_prompt,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +36,6 @@ class ContractReviewService:
 
     async def review_contract(
             self,
-            async_client,
             model_config,
             chunk_text: str,
             stance: str = "甲方",
@@ -55,59 +64,25 @@ class ContractReviewService:
             with open(contract_type_prompt_file_path, 'r', encoding='utf-8') as f:
                 contract_type_prompt = f.read()
 
-            # 构建上下文
-            context_info = f"""
-            ## 审阅上下文
-            {context}
-        
-            请结合上述上下文信息，确保审阅的连续性和一致性。
-            """ if context else ""
-
-            # 强度描述（用于提示词，非策略文件）
-            intensity_desc_map = {
-                "严格": "请进行严格审阅，覆盖全部审查维度，识别所有潜在法律与履约风险，包括措辞模糊、权利不对等等细节问题。",
-                "标准": "请进行标准审阅，重点关注7个核心风险领域（交付、质量、违约、知识产权、保密、争议解决、生效要件）。",
-                "宽松": "请进行宽松审阅，仅指出重大法律风险（如无效免责、管辖不明、主体缺失、违约无责等），忽略一般性模糊表述。"
-            }
-            intensity_desc = intensity_desc_map.get(intensity, intensity_desc_map["标准"])
-            review_prompt = base_prompt.format(stance=stance) + f"""
-    
-    ## 任务要求
-    - 用户立场：{stance}
-    - 审查强度：{intensity}
-    - 合同类型：{contract_type}
-    - 审阅要点：{contract_type_prompt}
-    - {intensity_desc}
-    
-    {context_info}
-    
-    ## 合同内容
-    {chunk_text}
-    请严格按照上述格式要求输出审阅结果。每个修改点必须包含：
-    1. 【修改点X】
-    2. 【原文】（100字以内）
-    3. 【风险分析】
-    4. 【风险等级】
-    5. 【修改后的内容】
-    6. 【修改理由】
-    7. 【风险类型】（15字内）
-    确保分析专业、建议可行、格式规范。
-    """
+            review_prompt = build_contract_review_prompt(
+                base_prompt=base_prompt,
+                contract_type_prompt=contract_type_prompt,
+                stance=stance,
+                intensity=intensity,
+                contract_type=contract_type,
+                context=context,
+                chunk_text=chunk_text,
+            )
 
             messages = [
-                {"role": "system", "content": "你是一个专业的合同审查律师，请严格按照提示词要求进行合同审阅。"},
+                {"role": "system", "content": REVIEW_SYSTEM_PROMPT},
                 {"role": "user", "content": review_prompt}
             ]
 
-            response = await async_client.chat.completions.create(
+            response = self.llm.chat.completions.create(
                 model=model_config.model_name,
-                stream=False,
                 messages=messages,
-                temperature=model_config.temperature,
-                max_tokens=model_config.max_tokens,
-                top_p=model_config.top_p,
-                frequency_penalty=model_config.frequency_penalty,
-                presence_penalty=model_config.presence_penalty
+                tools=[],
             )
             review_result = response.choices[0].message.content
             modifications = self._parse_review_result(review_result)
@@ -252,3 +227,70 @@ class ContractReviewService:
             ]
 
         return modifications
+
+
+class _FakeChatCompletions:
+    def create(self, *, model: str, messages: list, tools: list):
+        fake_review_result = """
+【修改点1】付款条款表述不清
+【原文】乙方完成工作后甲方付款。
+【风险分析】付款触发条件和付款时间不明确，容易引发履约争议。
+【风险等级】中
+【修改后的内容】乙方完成工作并经甲方书面验收通过后，甲方应于10个工作日内支付合同款项。
+【修改理由】补足验收条件和付款期限，减少争议。
+【风险类型】付款条款
+
+【修改点2】违约责任偏弱
+【原文】任何一方违约应承担责任。
+【风险分析】违约责任未量化，实际追责时缺乏执行标准。
+【风险等级】高
+【修改后的内容】任何一方违约的，应承担守约方因此遭受的全部损失，并按合同总金额的10%支付违约金。
+【修改理由】明确违约后果，提高约束力。
+【风险类型】违约责任
+""".strip()
+        return SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(content=fake_review_result)
+                )
+            ]
+        )
+
+
+class _FakeLLM:
+    def __init__(self):
+        self.chat = SimpleNamespace(completions=_FakeChatCompletions())
+
+
+async def _main_test_review_contract():
+    service = ContractReviewService.__new__(ContractReviewService)
+    service.llm = _FakeLLM()
+    service.mcp_client = None
+
+    model_config = SimpleNamespace(model_name="fake-contract-review-model")
+    chunk_text = """
+甲方应在项目完成后向乙方付款。
+任何一方违约应承担责任。
+""".strip()
+
+    result = await service.review_contract(
+        model_config=model_config,
+        chunk_text=chunk_text,
+        stance="甲方",
+        intensity="标准",
+        context="这是第 1 个分块，共 1 个。",
+        contract_type="服务类合同",
+    )
+
+    print("review_contract test result:")
+    for item in result:
+        print(item)
+
+    assert len(result) == 2, f"expected 2 modifications, got {len(result)}"
+    assert result[0]["risk_level"] == "中"
+    assert result[1]["risk_level"] == "高"
+    print("review_contract smoke test passed")
+
+
+if __name__ == "__main__":
+    asyncio.run(_main_test_review_contract())

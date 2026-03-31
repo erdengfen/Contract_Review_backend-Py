@@ -25,6 +25,10 @@ from  app.schemas.base import GenericResponse
 from app.schemas.contract_file import UploadResponse, TransformContractRequest
 from fastapi.responses import FileResponse
 from app.utils.document_parsing import docx2md, mk_pdf2docx, extract_text_from_pdf, docx2text, doc2docx
+from prompts.llm_prompt_vars import (
+    CONTRACT_INFO_EXTRACTION_SYSTEM_PROMPT,
+    build_contract_info_extraction_user_prompt,
+)
 
 router = APIRouter(tags=["合同管理"])
 """
@@ -122,42 +126,10 @@ async def upload_contract_file(
 
         contract_type =  await llm_client.ainvoke(
             [
-                SystemMessage(content="""
-                你是一个专业的合同信息提取引擎，请严格遵守以下规则：
-
-                1. **仅处理合同类文档**。如果输入内容不是合同（如论文、通知、模板等），请返回：
-                ```json
-                {
-                    "party_a": "{未识别}", 
-                    "party_b": "{未识别}", 
-                    "amount": "{未识别}"
-                }
-                ```
-                2. **必须以纯 JSON 格式输出，且仅包含以下三个字段**：
-                   - "party_a": 甲方全称（字符串）
-                   - "party_b": 乙方全称（字符串）
-                   - "amount": 合同金额及单位（字符串，如 "50000元"）
-
-                3. **字段规则**：
-                   - 若无法识别某字段，值为 "{未识别}"
-                   - 不要包含任何额外字段、注释、markdown、换行或说明文字
-                   - 输出必须是合法 JSON
-                   - 金额字段必须包含单位（"元"）
-                4. **禁止行为**：
-                   - 禁止输出非 JSON 内容（如“好的，结果如下：”）
-                   - 禁止推测、虚构信息
-                   - 禁止使用中文引号、单引号（必须双引号）
-
-                5. **正确示例**：
-                ```json
-                {
-                    "party_a": "华为技术有限公司", 
-                    "party_b": "中国移动通信集团", 
-                    "amount": "12500000元"
-                }
-                ```
-                """),
-                HumanMessage(content=f"请提取以下文档中的合同信息：\n\n{contract_content[:5000]}")
+                SystemMessage(content=CONTRACT_INFO_EXTRACTION_SYSTEM_PROMPT),
+                HumanMessage(
+                    content=build_contract_info_extraction_user_prompt(contract_content)
+                ),
             ]
         )
         contract_type = parse_contract_info(contract_type.content)

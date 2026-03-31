@@ -8,7 +8,7 @@ from openai import AsyncClient
 from app.schemas.model_configs import ModelConfigResponse
 
 
-def init_llm():
+def init_llm() -> OpenAI:
     """
     初始化LLM，model字段在调用时传入
     :return:
