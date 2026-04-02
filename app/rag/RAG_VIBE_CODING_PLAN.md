@@ -41,19 +41,26 @@
 - 已创建 `app/rag/services/context_builder.py`，完成 prompt 上下文构建器。
 - 已创建 `app/rag/services/rag_service.py`，完成多路 query、双 collection 检索、融合与重排的首版编排。
 - 已为上述新文件补齐文件内自测入口。
+- 已将 `app/rag/config.py` 接入主配置系统，可通过 `settings.rag_config` 读取。
+- 已在 `app/services/contract_review.py` 中接入可选 `rag_service`，并实现失败自动降级。
+- 已创建 `app/rag/factory.py`，用于统一实例化 RAG 主链路依赖。
+- 已创建 `app/rag/services/bootstrap.py`，用于缓存和获取 RAG 服务实例。
+- 已在 `app/router/review_task.py` 中接入 `get_rag_service()` 构造审阅服务。
+- 已修正 `review_task -> review_contract` 的参数传递方式，使主链路调用与当前服务签名一致。
+- 已完成 `app/rag/factory.py` 的文件内自测。
+- 已完成 `app/rag/services/bootstrap.py` 的文件内自测。
+- 已重新通过 `app/services/contract_review.py` 文件内自测，确认注入 fake RAG 后主流程仍可运行。
 
 ### 未完成
-- 尚未把 `app/rag/config.py` 接入现有主配置系统。
 - 尚未接入真实 Qdrant 容器并完成联通验证。
 - 尚未下载和验证本地 embedding 模型权重。
 - 尚未实现 sparse embedding 生成策略。
 - 尚未实现远程 embedding provider 的业务联调验证。
-- 尚未实现 retriever、多路 query、融合、rerank、context builder。
-- 尚未接入 `app/services/contract_review.py`。
-- 尚未实现跨 query 的统一编排服务。
 - 尚未实现真实远程 reranker provider 接线。
 - 尚未实现真实 Qdrant 容器下的检索联调。
-- 尚未把 `rag_service` 接入 `review_contract`。
+- 尚未在应用启动阶段完成真实 Qdrant 连通性检查和 collection 初始化。
+- 尚未在真实业务入口中验证“分块 -> RAG -> prompt 注入 -> 模型调用”端到端链路。
+- 尚未解决路由导入时会触发数据库初始化的全局副作用，因此当前无法在无数据库环境下完成 `review_task` 的纯导入级冒烟测试。
 
 ## Constraints
 - Qdrant 必须独立容器部署。
@@ -218,6 +225,9 @@
 - prompt 中可见外部法律与内部规则分段
 
 ## Suggested Build Order
+- 下一步建议优先处理两件事：
+- 为 Qdrant 增加连通性检查和 collection 初始化脚本或初始化入口。
+- 为 `review_task` 所在链路准备最小联调环境，至少具备数据库可连通条件，再做端到端验证。
 1. `config.py`
 2. `schemas.py`
 3. `clients/qdrant_client.py`

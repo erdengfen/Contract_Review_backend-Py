@@ -32,6 +32,7 @@ from app.utils.content_slicer import split_text_by_length
 from openai import AsyncClient
 from app.curd.model_configs import get_default_model_by_type
 from asyncio import  Semaphore
+from app.rag.services.bootstrap import get_rag_service
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["合同审阅"])
@@ -74,7 +75,7 @@ async def start_task(
         mcp_client = MCPClient()
         await mcp_client.initialize()
         print(f"mcp init time: {time.time()-mcp_init_time}")
-        contract_review_service = ContractReviewService(mcp_client)
+        contract_review_service = ContractReviewService(mcp_client, rag_service=get_rag_service())
         contract_content_path = contract.contract_content_path
         with open(contract_content_path, "r", encoding="utf-8") as f:
             contract_content = f.read()
@@ -101,8 +102,12 @@ async def start_task(
                 async with semaphore:
                     context = f"这是第 {idx + 1} 个分块，共 {n} 个。"
                     mods = await contract_review_service.review_contract(
-                        async_client, model_config, content, review_task.stance, "",
-                        context, contract_type=review_task.contract_type
+                        model_config=model_config,
+                        chunk_text=content,
+                        stance=review_task.stance,
+                        intensity="标准",
+                        context=context,
+                        contract_type=review_task.contract_type,
                     )
             except Exception as e:
                 # logger.error(f"Chunk {idx} 审阅失败: {e}")
