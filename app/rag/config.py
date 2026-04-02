@@ -94,6 +94,10 @@ class RagQdrantConfig(BaseModel):
         None,
         description="可选的 Qdrant API Key。",
     )
+    dense_vector_size: int = Field(
+        512,
+        description="Qdrant 中 dense 向量维度，创建 collection 时使用。",
+    )
     external_collection: str = Field(
         "external_legal_kb",
         description="外部法律知识库 collection 名称。",
@@ -228,6 +232,7 @@ def _main_test_config():
     config = RagConfig()
     assert config.enabled is True
     assert config.embedding.provider_mode in {"local", "remote"}
+    assert config.qdrant.dense_vector_size > 0
     assert config.qdrant.external_collection == "external_legal_kb"
     assert config.qdrant.internal_collection == "internal_review_rules"
     print("RagConfig self test passed")

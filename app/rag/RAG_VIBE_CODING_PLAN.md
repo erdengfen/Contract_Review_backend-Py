@@ -50,9 +50,15 @@
 - 已完成 `app/rag/factory.py` 的文件内自测。
 - 已完成 `app/rag/services/bootstrap.py` 的文件内自测。
 - 已重新通过 `app/services/contract_review.py` 文件内自测，确认注入 fake RAG 后主流程仍可运行。
+- 已为 Qdrant 客户端补充 `ping`、collection 信息读取和默认双 collection 初始化能力。
+- 已创建 `app/rag/services/qdrant_setup.py`，提供 Qdrant 连通验证与默认 collection 初始化入口。
+- 已为 `app/rag/services/qdrant_setup.py` 补齐文件内自测入口。
+- 已新增 `docker-compose.qdrant.yml`，用于独立启动 Qdrant 容器。
+- 已将 `qdrant_setup.py` 扩展为真实 CLI 入口，支持 `--self-test` 和 `--recreate`。
+- 已在真实 Qdrant 容器上完成连通验证和默认双 collection 初始化验证。
+- 已确认当前环境存在本地代理变量，会劫持 `localhost` 请求；已在 Qdrant 客户端中补充本地连接绕过代理逻辑。
 
 ### 未完成
-- 尚未接入真实 Qdrant 容器并完成联通验证。
 - 尚未下载和验证本地 embedding 模型权重。
 - 尚未实现 sparse embedding 生成策略。
 - 尚未实现远程 embedding provider 的业务联调验证。
@@ -225,8 +231,7 @@
 - prompt 中可见外部法律与内部规则分段
 
 ## Suggested Build Order
-- 下一步建议优先处理两件事：
-- 为 Qdrant 增加连通性检查和 collection 初始化脚本或初始化入口。
+- 在真实 Qdrant 容器环境下执行 `qdrant_setup.py`，完成双 collection 初始化验证。
 - 为 `review_task` 所在链路准备最小联调环境，至少具备数据库可连通条件，再做端到端验证。
 1. `config.py`
 2. `schemas.py`

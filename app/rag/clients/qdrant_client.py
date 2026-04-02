@@ -3,6 +3,7 @@ Qdrant 客户端封装，用于 RAG 索引与检索。
 """
 from __future__ import annotations
 
+import os
 import sys
 from typing import Any, Optional
 from pathlib import Path
@@ -46,8 +47,28 @@ class RagQdrantClient:
             ) from exc
         return models
 
+    def _ensure_local_no_proxy(self):
+        """
+        本地 Qdrant 连接默认绕过系统代理，避免 localhost 请求被错误转发。
+        """
+        local_hosts = {"localhost", "127.0.0.1", "0.0.0.0"}
+        if self.config.host not in local_hosts:
+            return
+
+        for env_key in ("NO_PROXY", "no_proxy"):
+            current_value = os.environ.get(env_key, "").strip()
+            entries = [item.strip() for item in current_value.split(",") if item.strip()]
+            changed = False
+            for host in ("127.0.0.1", "localhost"):
+                if host not in entries:
+                    entries.append(host)
+                    changed = True
+            if changed:
+                os.environ[env_key] = ",".join(entries)
+
     def get_client(self):
         if self._client is None:
+            self._ensure_local_no_proxy()
             client_cls = self._load_client_class()
             self._client = client_cls(
                 host=self.config.host,
@@ -56,12 +77,30 @@ class RagQdrantClient:
                 api_key=self.config.api_key,
                 prefer_grpc=self.config.prefer_grpc,
                 timeout=self.config.timeout,
+                check_compatibility=False,
             )
         return self._client
 
     def collection_exists(self, name: str) -> bool:
         client = self.get_client()
         return client.collection_exists(name)
+
+    def ping(self) -> bool:
+        """
+        检查 Qdrant 服务是否可连通。
+        """
+        client = self.get_client()
+        if hasattr(client, "get_collections"):
+            client.get_collections()
+            return True
+        return False
+
+    def get_collection_info(self, name: str):
+        """
+        获取单个 collection 信息。
+        """
+        client = self.get_client()
+        return client.get_collection(name)
 
     def create_collection(self, name: str, **kwargs):
         """
@@ -110,6 +149,24 @@ class RagQdrantClient:
                 )
             },
         )
+
+    def ensure_default_collections(self, recreate: bool = False) -> dict[str, bool]:
+        """
+        确保默认的双 collection 已创建。
+        """
+        dense_size = self.config.dense_vector_size
+        return {
+            self.config.external_collection: self.create_dense_sparse_collection(
+                name=self.config.external_collection,
+                dense_size=dense_size,
+                recreate=recreate,
+            ),
+            self.config.internal_collection: self.create_dense_sparse_collection(
+                name=self.config.internal_collection,
+                dense_size=dense_size,
+                recreate=recreate,
+            ),
+        }
 
     def build_match_filter(self, field_filters: dict[str, Any]):
         """
@@ -271,6 +328,14 @@ class _FakeQdrantClient:
         self.collections.add(collection_name)
         return True
 
+    def get_collections(self):
+        return {"collections": sorted(self.collections)}
+
+    def get_collection(self, name: str):
+        if name not in self.collections:
+            raise KeyError(name)
+        return {"name": name}
+
     def upsert(self, collection_name: str, points: list[Any], **kwargs):
         return {"collection_name": collection_name, "points_count": len(points)}
 
@@ -303,10 +368,18 @@ class _TestableRagQdrantClient(RagQdrantClient):
 def _main_test_qdrant_client():
     config = RagQdrantConfig()
     client = _TestableRagQdrantClient(config)
+    client._ensure_local_no_proxy()
+    assert "127.0.0.1" in os.environ.get("NO_PROXY", "") or "127.0.0.1" in os.environ.get("no_proxy", "")
+    assert client.ping() is True
     assert client.collection_exists("demo") is False
     created = client.create_dense_sparse_collection(name="demo", dense_size=3)
     assert created is True
     assert client.collection_exists("demo") is True
+    info = client.get_collection_info("demo")
+    assert info["name"] == "demo"
+    ensured = client.ensure_default_collections()
+    assert config.external_collection in ensured
+    assert config.internal_collection in ensured
 
     filter_obj = client.build_match_filter(
         {"region": "CN", "effective_status": "effective", "skip": None}
