@@ -8,6 +8,7 @@ from typing import Any
 from app.rag.clients.embedding_local import LocalEmbeddingClient
 from app.rag.clients.embedding_remote import RemoteEmbeddingClient
 from app.rag.clients.qdrant_client import RagQdrantClient
+from app.rag.clients.rerank_remote import RemoteRerankClient, RemoteRerankConfigError
 from app.rag.config import RagConfig
 from app.rag.retrievers.external_legal_retriever import ExternalLegalRetriever
 from app.rag.retrievers.internal_rules_retriever import InternalRulesRetriever
@@ -35,6 +36,12 @@ def build_rag_service(config: RagConfig) -> RagService:
     """
     qdrant_client = RagQdrantClient(config=config.qdrant)
     embedding_client = build_embedding_client(config)
+    rerank_client = None
+    if config.rerank.enabled and config.rerank.provider_mode == "remote":
+        try:
+            rerank_client = RemoteRerankClient(config.rerank)
+        except RemoteRerankConfigError:
+            rerank_client = None
 
     return RagService(
         config=config,
@@ -49,7 +56,7 @@ def build_rag_service(config: RagConfig) -> RagService:
             embedding_client=embedding_client,
             config=config,
         ),
-        reranker=RagReranker(config=config, client=None),
+        reranker=RagReranker(config=config, client=rerank_client),
         context_builder=RagContextBuilder(config=config),
     )
 

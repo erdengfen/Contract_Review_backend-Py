@@ -3,10 +3,13 @@ RAG 重排模块。
 """
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from app.rag.config import RagConfig
 from app.rag.schemas import RetrievalHit
+
+logger = logging.getLogger(__name__)
 
 
 class RagReranker:
@@ -33,8 +36,11 @@ class RagReranker:
             return sorted(hits, key=lambda hit: hit.score, reverse=True)[:limit]
 
         if self.client is not None and hasattr(self.client, "rerank"):
-            reranked_hits = self.client.rerank(query=query, hits=hits, top_n=limit)
-            return list(reranked_hits)[:limit]
+            try:
+                reranked_hits = self.client.rerank(query=query, hits=hits, top_n=limit)
+                return list(reranked_hits)[:limit]
+            except Exception as exc:
+                logger.warning(f"远程 rerank 失败，自动降级为分数排序: {exc}")
 
         return sorted(hits, key=lambda hit: hit.score, reverse=True)[:limit]
 

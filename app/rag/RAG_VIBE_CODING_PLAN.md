@@ -86,11 +86,12 @@
 - 已完成真实入库后的检索命中验证
 - 已完成真实 `prompt_context` 生成验证
 - 已创建 `app/rag/services/review_contract_validation.py`，用于 `review_contract` 端到端联调验证。
+- 已创建 `app/rag/clients/rerank_remote.py`，完成远程 reranker 客户端首版接入。
+- 已将远程 reranker 客户端接入 `build_rag_service`，未配置时自动降级为无 rerank。
 
 ### 未完成
 - 尚未实现 sparse embedding 生成策略。
 - 尚未实现远程 embedding provider 的业务联调验证。
-- 尚未实现真实远程 reranker provider 接线。
 - 尚未在应用启动阶段完成真实 Qdrant 连通性检查和 collection 初始化。
 - 尚未在真实业务入口中验证“分块 -> RAG -> prompt 注入 -> 模型调用”端到端链路。
 - 尚未解决路由导入时会触发数据库初始化的全局副作用，因此当前无法在无数据库环境下完成 `review_task` 的纯导入级冒烟测试。
