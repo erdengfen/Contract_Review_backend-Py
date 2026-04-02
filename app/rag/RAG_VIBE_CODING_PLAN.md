@@ -37,6 +37,10 @@
 - 已创建 `app/rag/retrievers/external_legal_retriever.py`，完成外部法律库检索器首版。
 - 已创建 `app/rag/retrievers/internal_rules_retriever.py`，完成内部规则库检索器首版。
 - 已为上述 retriever 文件补齐文件内自测入口。
+- 已创建 `app/rag/retrievers/reranker.py`，完成首版重排器。
+- 已创建 `app/rag/services/context_builder.py`，完成 prompt 上下文构建器。
+- 已创建 `app/rag/services/rag_service.py`，完成多路 query、双 collection 检索、融合与重排的首版编排。
+- 已为上述新文件补齐文件内自测入口。
 
 ### 未完成
 - 尚未把 `app/rag/config.py` 接入现有主配置系统。
@@ -47,9 +51,9 @@
 - 尚未实现 retriever、多路 query、融合、rerank、context builder。
 - 尚未接入 `app/services/contract_review.py`。
 - 尚未实现跨 query 的统一编排服务。
-- 尚未实现 reranker。
-- 尚未实现 context builder。
+- 尚未实现真实远程 reranker provider 接线。
 - 尚未实现真实 Qdrant 容器下的检索联调。
+- 尚未把 `rag_service` 接入 `review_contract`。
 
 ## Constraints
 - Qdrant 必须独立容器部署。
@@ -232,11 +236,11 @@
 16. 接入 `app/services/contract_review.py`
 
 ## Next Step
-1. `app/rag/retrievers/reranker.py`
-2. `app/rag/services/context_builder.py`
-3. `app/rag/services/rag_service.py`
-4. 将多路 query 与两个 collection 的检索器编排起来
-5. 接入 `app/services/contract_review.py`
+1. 将 `app/rag/config.py` 接入现有主配置系统
+2. 接入真实 Qdrant 容器并验证 collection 初始化
+3. 接入真实本地 embedding 模型权重与实际向量生成
+4. 将 `rag_service` 接入 `app/services/contract_review.py`
+5. 补 `review_contract` 级联测试
 
 ## Non-Goals For First Iteration
 - 不要第一版就做复杂评测平台。
