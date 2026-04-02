@@ -5,12 +5,15 @@
 @Author  ：潘尚国
 @Date    ：2025/10/22 09:08 
 """
+import os
 from pydantic import BaseModel, Field
 from pathlib import Path
 import yaml
+from dotenv import load_dotenv
 from app.rag.config import RagConfig
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
+load_dotenv()
 
 class ServerConfig(BaseModel):
 
@@ -34,8 +37,8 @@ class CASConfig(BaseModel):
 class OpenAIConfig(BaseModel):
     # provider: str = Field("deepseek", description="LLM提供者，如 deepseek/openai")
     api_key: str = Field(..., description="LLM API密钥")
-    model: str = Field("deepseek-chat", description="模型名称")
-    api_base: str = Field("https://openai.deepseek.cn/v1", description="LLM API基础URL")
+    model: str = Field("deepseek-ai/DeepSeek-V3.2", description="模型名称")
+    api_base: str = Field("https://api.siliconflow.com/v1", description="LLM API基础URL")
 
 
 class DatabaseConfig(BaseModel):
@@ -103,11 +106,46 @@ class Config(BaseModel):
     rag_config: RagConfig = Field(default_factory=RagConfig, description="RAG 配置")
 
 
+def _set_nested_config(raw_config: dict, keys: tuple[str, ...], value):
+    current = raw_config
+    for key in keys[:-1]:
+        current = current.setdefault(key, {})
+    current[keys[-1]] = value
+
+
+def _apply_env_overrides(raw_config: dict):
+    env_mapping = {
+        "OPENAI_API_KEY": (("openai_config", "api_key"), str),
+        "OPENAI_API_BASE": (("openai_config", "api_base"), str),
+        "OPENAI_MODEL": (("openai_config", "model"), str),
+        "RAG_RERANK_REMOTE_PROVIDER": (("rag_config", "rerank", "remote_provider"), str),
+        "RAG_RERANK_REMOTE_MODEL": (("rag_config", "rerank", "remote_model"), str),
+        "RAG_RERANK_REMOTE_BASE_URL": (("rag_config", "rerank", "remote_base_url"), str),
+        "RAG_RERANK_REMOTE_PATH": (("rag_config", "rerank", "remote_path"), str),
+        "RAG_RERANK_REMOTE_TIMEOUT": (("rag_config", "rerank", "remote_timeout"), int),
+    }
+
+    for env_name, (config_keys, caster) in env_mapping.items():
+        env_value = os.getenv(env_name)
+        if env_value in {None, ""}:
+            continue
+        _set_nested_config(raw_config, config_keys, caster(env_value))
+
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    rerank_api_key = os.getenv("RAG_RERANK_REMOTE_API_KEY") or openai_api_key
+    if rerank_api_key:
+        _set_nested_config(raw_config, ("rag_config", "rerank", "remote_api_key"), rerank_api_key)
+
+    embedding_api_key = os.getenv("RAG_EMBEDDING_REMOTE_API_KEY") or openai_api_key
+    if embedding_api_key:
+        _set_nested_config(raw_config, ("rag_config", "embedding", "remote_api_key"), embedding_api_key)
+
 
 def load_config(config_path=BASE_DIR / "app" / "config" / "config.yaml"):
 
     with open(config_path, "r", encoding="utf-8") as f:
         raw_config = yaml.safe_load(f)
+    _apply_env_overrides(raw_config)
     return Config.model_validate(raw_config)
 
 

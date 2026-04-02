@@ -88,6 +88,14 @@
 - 已创建 `app/rag/services/review_contract_validation.py`，用于 `review_contract` 端到端联调验证。
 - 已创建 `app/rag/clients/rerank_remote.py`，完成远程 reranker 客户端首版接入。
 - 已将远程 reranker 客户端接入 `build_rag_service`，未配置时自动降级为无 rerank。
+- 已补齐远程 reranker 的通用请求/响应协议、HTTP 自测和部分结果回填逻辑。
+- 已在 `retrieval_validation.py` 中补充 fake rerank 验证入口。
+- 已修正远程 reranker URL 拼接逻辑，兼容 `https://api.siliconflow.com/v1/rerank` 这类带版本前缀的真实接口。
+- 已将远程 reranker 默认配置切换为 SiliconFlow：
+- 地址：`https://api.siliconflow.com/v1/rerank`
+- 模型：`Qwen/Qwen3-Reranker-8B`
+- 已通过真实请求完成最小联调验证，确认 rerank 代码路径可直连 SiliconFlow。
+- 已将 LLM 与 RAG rerank 的 API Key 调整为环境变量覆盖，`app/config/config.yaml` 不再保存明文 key。
 
 ### 未完成
 - 尚未实现 sparse embedding 生成策略。
@@ -95,6 +103,10 @@
 - 尚未在应用启动阶段完成真实 Qdrant 连通性检查和 collection 初始化。
 - 尚未在真实业务入口中验证“分块 -> RAG -> prompt 注入 -> 模型调用”端到端链路。
 - 尚未解决路由导入时会触发数据库初始化的全局副作用，因此当前无法在无数据库环境下完成 `review_task` 的纯导入级冒烟测试。
+- 当前环境仍无法完成 `review_task` 真正端到端联调：
+- `mysql-prod` 主机名无法解析，数据库不可达
+- 本机 `127.0.0.1:8081` 未发现可用 MCP 服务
+- 因此尚未在“数据库 + MCP + RAG”齐备环境下完成真实业务入口联调
 
 ## Constraints
 - Qdrant 必须独立容器部署。
@@ -259,12 +271,10 @@
 - prompt 中可见外部法律与内部规则分段
 
 ## Suggested Build Order
-- 在真实 Qdrant 容器环境下执行 `qdrant_setup.py`，完成双 collection 初始化验证。
-- 为 `review_task` 所在链路准备最小联调环境，至少具备数据库可连通条件，再做端到端验证。
-- 下一步建议优先补：
-- 在真实 Qdrant 容器上用最小样本完成入库验证。
-- 再补真实 embedding 模型联调，而不是继续依赖 `--fake-embedding`。
-- 完成真实 Qdrant 检索验证后，再推进 `review_contract` 端到端联调。
+- 优先在可解析 `mysql-prod` 且可访问 `mcp-server:8081` 的环境执行 `review_task` 真正端到端联调。
+- 在同一环境确认 Qdrant collection 已初始化且最小样本已入库，避免端到端联调时混入索引问题。
+- 若 `review_task` 联调通过，再补最小回归验证脚本或标准化联调命令，固化验证入口。
+- 之后再补真实远程 embedding provider 业务联调与应用启动阶段的 Qdrant 健康检查。
 1. `config.py`
 2. `schemas.py`
 3. `clients/qdrant_client.py`
@@ -283,11 +293,11 @@
 16. 接入 `app/services/contract_review.py`
 
 ## Next Step
-1. 将 `app/rag/config.py` 接入现有主配置系统
-2. 接入真实 Qdrant 容器并验证 collection 初始化
-3. 接入真实本地 embedding 模型权重与实际向量生成
-4. 将 `rag_service` 接入 `app/services/contract_review.py`
-5. 补 `review_contract` 级联测试
+1. 在可用环境中恢复 `mysql-prod` 与 `mcp-server:8081` 连通性，执行 `review_task` 真实端到端联调
+2. 记录 `review_task` 联调所使用的最小数据库样本、合同文件和默认模型配置，沉淀可复现步骤
+3. 补真实远程 embedding provider 的业务联调验证
+4. 在应用启动阶段补充真实 Qdrant 连通性检查和默认 collection 状态检查
+5. 视联调结果决定是否补 `review_task` / `review_contract` 的最小回归验证入口
 
 ## Non-Goals For First Iteration
 - 不要第一版就做复杂评测平台。

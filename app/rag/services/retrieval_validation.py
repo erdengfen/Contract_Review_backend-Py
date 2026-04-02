@@ -9,6 +9,7 @@ import json
 from app.config.config import settings
 from app.rag.clients.fake_embedding import DeterministicFakeEmbeddingClient
 from app.rag.clients.qdrant_client import RagQdrantClient
+from app.rag.clients.rerank_remote import _TestableRemoteRerankClient
 from app.rag.retrievers.external_legal_retriever import ExternalLegalRetriever
 from app.rag.retrievers.internal_rules_retriever import InternalRulesRetriever
 from app.rag.retrievers.multi_query import MultiQueryBuilder
@@ -21,7 +22,7 @@ from app.rag.services.rag_service import RagService
 DEFAULT_CHUNK_TEXT = "合同格式条款提供方减轻自身责任，且付款条件不明确，违约责任未量化。"
 
 
-def build_validation_service(use_fake_embedding: bool = True) -> RagService:
+def build_validation_service(use_fake_embedding: bool = True, use_fake_rerank: bool = False) -> RagService:
     config = settings.rag_config
     qdrant_client = RagQdrantClient(config.qdrant)
     if use_fake_embedding:
@@ -37,6 +38,17 @@ def build_validation_service(use_fake_embedding: bool = True) -> RagService:
         else:
             raise ValueError(f"不支持的 embedding provider_mode: {config.embedding.provider_mode}")
 
+    rerank_client = None
+    if use_fake_rerank:
+        rerank_client = _TestableRemoteRerankClient(
+            config.rerank.model_copy(
+                update={
+                    "remote_base_url": "http://fake-rerank-service",
+                    "remote_model": config.rerank.remote_model or "Qwen/Qwen3-Reranker-8B",
+                }
+            )
+        )
+
     return RagService(
         config=config,
         multi_query_builder=MultiQueryBuilder(),
@@ -50,7 +62,7 @@ def build_validation_service(use_fake_embedding: bool = True) -> RagService:
             embedding_client=embedding_client,
             config=config,
         ),
-        reranker=RagReranker(config=config, client=None),
+        reranker=RagReranker(config=config, client=rerank_client),
         context_builder=RagContextBuilder(config=config),
     )
 
@@ -86,8 +98,11 @@ def _main_test_retrieval_validation():
     print("Retrieval validation self test passed")
 
 
-def _run_cli(chunk_text: str, contract_type: str, stance: str, use_fake_embedding: bool):
-    service = build_validation_service(use_fake_embedding=use_fake_embedding)
+def _run_cli(chunk_text: str, contract_type: str, stance: str, use_fake_embedding: bool, use_fake_rerank: bool):
+    service = build_validation_service(
+        use_fake_embedding=use_fake_embedding,
+        use_fake_rerank=use_fake_rerank,
+    )
     response = service.retrieve_for_review(
         RetrievalRequest(
             chunk_text=chunk_text,
@@ -109,6 +124,11 @@ if __name__ == "__main__":
         help="使用确定性假 embedding，验证真实 Qdrant 检索链路",
     )
     parser.add_argument(
+        "--fake-rerank",
+        action="store_true",
+        help="使用假的远程 reranker 客户端，验证 rerank 接线逻辑。",
+    )
+    parser.add_argument(
         "--self-test",
         action="store_true",
         help="执行文件内自测",
@@ -123,4 +143,5 @@ if __name__ == "__main__":
             contract_type=args.contract_type,
             stance=args.stance,
             use_fake_embedding=args.fake_embedding,
+            use_fake_rerank=args.fake_rerank,
         )

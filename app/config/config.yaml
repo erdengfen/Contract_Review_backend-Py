@@ -23,10 +23,10 @@ cas_config:
   vanna_url_online: vanna:8084
 
 openai_config:
-  api_key: "ec4d5789-6945-4f0e-9ff9-7d6f10ccfff8"
-  # api_key: "sk-8715838624b44ad4b5072f7a6e0c970c" #deepseek
-  api_base: "https://ark.cn-beijing.volces.com/api/v3"
-  model: "doubao-seed-1-6-250615"
+  # 请通过环境变量 OPENAI_API_KEY 配置
+  api_key: ""
+  api_base: "https://api.siliconflow.com/v1"
+  model: "deepseek-ai/DeepSeek-V3.2"
 
 #openai_config: # 千问
 #  api_key: "sk-8d99249eb58648acb91f00e38af84df1"
@@ -76,3 +76,14 @@ logging_config:
   log_level: "INFO"
   backup_days: 30
   encoding: "utf-8"
+
+rag_config:
+  rerank:
+    enabled: true
+    remote_provider: "siliconflow"
+    remote_model: "Qwen/Qwen3-Reranker-8B"
+    remote_base_url: "https://api.siliconflow.com/v1"
+    remote_path: "/rerank"
+    # 请通过环境变量 RAG_RERANK_REMOTE_API_KEY 配置；未设置时会回退使用 OPENAI_API_KEY
+    remote_api_key: ""
+    remote_timeout: 30

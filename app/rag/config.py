@@ -56,20 +56,28 @@ class RagRerankConfig(BaseModel):
         description="首版仅允许远程 rerank。",
     )
     remote_provider: str = Field(
-        "hf_or_service",
+        "siliconflow",
         description="远程 reranker provider 类型。",
     )
     remote_model: str = Field(
-        "BAAI/bge-reranker-v2-m3",
+        "Qwen/Qwen3-Reranker-8B",
         description="远程 reranker 模型名称。",
     )
     remote_base_url: str = Field(
-        "",
+        "https://api.siliconflow.com/v1",
         description="远程 reranker 服务基地址。",
+    )
+    remote_path: str = Field(
+        "/rerank",
+        description="远程 reranker 接口路径。",
     )
     remote_api_key: str = Field(
         "",
         description="远程 reranker 服务 API Key。",
+    )
+    remote_timeout: int = Field(
+        30,
+        description="远程 reranker 请求超时时间（秒）。",
     )
     top_n: int = Field(
         8,

@@ -38,7 +38,16 @@ class RagReranker:
         if self.client is not None and hasattr(self.client, "rerank"):
             try:
                 reranked_hits = self.client.rerank(query=query, hits=hits, top_n=limit)
-                return list(reranked_hits)[:limit]
+                reranked_hits = list(reranked_hits)[:limit]
+                if len(reranked_hits) >= limit:
+                    return reranked_hits
+
+                used_ids = {hit.record_id for hit in reranked_hits}
+                remaining_hits = [
+                    hit for hit in sorted(hits, key=lambda hit: hit.score, reverse=True)
+                    if hit.record_id not in used_ids
+                ]
+                return (reranked_hits + remaining_hits)[:limit]
             except Exception as exc:
                 logger.warning(f"远程 rerank 失败，自动降级为分数排序: {exc}")
 
@@ -72,6 +81,20 @@ def _main_test_reranker():
     reranked = reranker.rerank(query="合同履行", hits=hits, top_n=1)
     assert len(reranked) == 1
     assert reranked[0].record_id == "law-2"
+
+    partial_reranker = RagReranker(
+        config=config,
+        client=type(
+            "PartialClient",
+            (),
+            {
+                "rerank": lambda self, query, hits, top_n: [hits[1]],
+            },
+        )(),
+    )
+    partial = partial_reranker.rerank(query="合同履行", hits=hits, top_n=2)
+    assert len(partial) == 2
+    assert partial[0].record_id == "law-2"
     print("RagReranker self test passed")
 
 
