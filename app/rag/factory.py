@@ -33,7 +33,7 @@ def build_rag_service(config: RagConfig) -> RagService:
     """
     构造 RAG 主服务。
     """
-    qdrant_client = RagQdrantClient(config=config)
+    qdrant_client = RagQdrantClient(config=config.qdrant)
     embedding_client = build_embedding_client(config)
 
     return RagService(
