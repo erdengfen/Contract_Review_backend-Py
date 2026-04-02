@@ -57,6 +57,11 @@
 - 已将 `qdrant_setup.py` 扩展为真实 CLI 入口，支持 `--self-test` 和 `--recreate`。
 - 已在真实 Qdrant 容器上完成连通验证和默认双 collection 初始化验证。
 - 已确认当前环境存在本地代理变量，会劫持 `localhost` 请求；已在 Qdrant 客户端中补充本地连接绕过代理逻辑。
+- 已创建 `app/rag/ingest/` 包。
+- 已创建 `app/rag/ingest/chunkers.py`，提供外部法律条文切分、内部规则段落切分和批处理工具。
+- 已创建 `app/rag/ingest/external_legal_ingest.py`，完成外部法律库首版入库链路。
+- 已创建 `app/rag/ingest/internal_rules_ingest.py`，完成内部规则库首版入库链路。
+- 已为上述入库文件补齐文件内自测入口。
 
 ### 未完成
 - 尚未下载和验证本地 embedding 模型权重。
@@ -67,6 +72,8 @@
 - 尚未在应用启动阶段完成真实 Qdrant 连通性检查和 collection 初始化。
 - 尚未在真实业务入口中验证“分块 -> RAG -> prompt 注入 -> 模型调用”端到端链路。
 - 尚未解决路由导入时会触发数据库初始化的全局副作用，因此当前无法在无数据库环境下完成 `review_task` 的纯导入级冒烟测试。
+- 尚未用真实法规样本和真实内部规则样本执行入库联调。
+- 尚未实现入库 CLI 或脚本入口。
 
 ## Constraints
 - Qdrant 必须独立容器部署。
@@ -233,6 +240,9 @@
 ## Suggested Build Order
 - 在真实 Qdrant 容器环境下执行 `qdrant_setup.py`，完成双 collection 初始化验证。
 - 为 `review_task` 所在链路准备最小联调环境，至少具备数据库可连通条件，再做端到端验证。
+- 下一步建议优先补：
+- 为 `external_legal_ingest.py` 和 `internal_rules_ingest.py` 增加 CLI 入口。
+- 准备最小 JSONL 样本并在真实 Qdrant 容器上完成一次端到端入库验证。
 1. `config.py`
 2. `schemas.py`
 3. `clients/qdrant_client.py`
