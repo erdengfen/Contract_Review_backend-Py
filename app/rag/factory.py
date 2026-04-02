@@ -23,9 +23,9 @@ def build_embedding_client(config: RagConfig) -> Any:
     """
     provider_mode = config.embedding.provider_mode
     if provider_mode == "local":
-        return LocalEmbeddingClient(config=config)
+        return LocalEmbeddingClient(config=config.embedding)
     if provider_mode == "remote":
-        return RemoteEmbeddingClient(config=config)
+        return RemoteEmbeddingClient(config=config.embedding)
     raise ValueError(f"不支持的 embedding provider_mode: {provider_mode}")
 
 

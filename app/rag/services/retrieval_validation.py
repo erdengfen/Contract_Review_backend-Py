@@ -27,9 +27,15 @@ def build_validation_service(use_fake_embedding: bool = True) -> RagService:
     if use_fake_embedding:
         embedding_client = DeterministicFakeEmbeddingClient(dim=config.qdrant.dense_vector_size)
     else:
-        from app.rag.factory import build_embedding_client
+        from app.rag.clients.embedding_local import LocalEmbeddingClient
+        from app.rag.clients.embedding_remote import RemoteEmbeddingClient
 
-        embedding_client = build_embedding_client(config)
+        if config.embedding.provider_mode == "local":
+            embedding_client = LocalEmbeddingClient(config.embedding)
+        elif config.embedding.provider_mode == "remote":
+            embedding_client = RemoteEmbeddingClient(config.embedding)
+        else:
+            raise ValueError(f"不支持的 embedding provider_mode: {config.embedding.provider_mode}")
 
     return RagService(
         config=config,

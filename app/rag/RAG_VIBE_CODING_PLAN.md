@@ -78,6 +78,12 @@
 - 能返回内部规则命中
 - 能生成分段的 `prompt_context`
 - 本轮检索验证仍使用 `--fake-embedding`，验证目标是“真实检索链路结构可用”，不是“真实 embedding 模型效果”
+- 已修正 embedding 客户端的配置接线错误，避免将整份 `RagConfig` 误传给本地/远程 embedding 客户端。
+- 已完成真实本地 embedding 模型检索联调：
+- 使用 `BAAI/bge-small-zh-v1.5`
+- 已完成真实向量生成
+- 已完成真实入库后的检索命中验证
+- 已完成真实 `prompt_context` 生成验证
 
 ### 未完成
 - 尚未下载和验证本地 embedding 模型权重。
@@ -89,7 +95,6 @@
 - 尚未在真实业务入口中验证“分块 -> RAG -> prompt 注入 -> 模型调用”端到端链路。
 - 尚未解决路由导入时会触发数据库初始化的全局副作用，因此当前无法在无数据库环境下完成 `review_task` 的纯导入级冒烟测试。
 - 尚未用真实本地 embedding 模型完成入库联调。
-- 尚未用真实本地 embedding 模型完成检索联调。
 
 ## Constraints
 - Qdrant 必须独立容器部署。
