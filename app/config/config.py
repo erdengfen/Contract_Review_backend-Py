@@ -8,6 +8,7 @@
 from pydantic import BaseModel, Field
 from pathlib import Path
 import yaml
+from app.rag.config import RagConfig
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -99,6 +100,7 @@ class Config(BaseModel):
     jwt_config: JWTConfig
     logging_config: LoggingConfig
     mcp_server: MCPConfig
+    rag_config: RagConfig = Field(default_factory=RagConfig, description="RAG 配置")
 
 
 

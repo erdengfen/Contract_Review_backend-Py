@@ -12,12 +12,16 @@ from langchain_core.messages import SystemMessage, HumanMessage
 
 try:
     from ..core.llm import init_llm
+    from ..config.config import settings
+    from ..rag.schemas import RetrievalRequest
     from prompts.llm_prompt_vars import (
         REVIEW_SYSTEM_PROMPT,
         build_contract_review_prompt,
     )
 except ImportError:
     from app.core.llm import init_llm
+    from app.config.config import settings
+    from app.rag.schemas import RetrievalRequest
     from prompts.llm_prompt_vars import (
         REVIEW_SYSTEM_PROMPT,
         build_contract_review_prompt,
@@ -30,9 +34,10 @@ class ContractReviewService:
     """合同审阅服务"""
 
     # 初始化函数
-    def __init__(self, mcp_client):
+    def __init__(self, mcp_client, rag_service=None):
         self.llm = init_llm()
         self.mcp_client = mcp_client
+        self.rag_service = rag_service
 
     async def review_contract(
             self,
@@ -64,6 +69,24 @@ class ContractReviewService:
             with open(contract_type_prompt_file_path, 'r', encoding='utf-8') as f:
                 contract_type_prompt = f.read()
 
+            rag_context = ""
+            if self.rag_service and settings.rag_config.enabled:
+                try:
+                    rag_result = self.rag_service.retrieve_for_review(
+                        RetrievalRequest(
+                            chunk_text=chunk_text,
+                            contract_type=contract_type,
+                            stance=stance,
+                        )
+                    )
+                    rag_context = rag_result.prompt_context.strip()
+                except Exception as rag_error:
+                    logger.warning(f"RAG 检索失败，降级为纯审阅模式: {rag_error}")
+
+            prompt_chunk_text = chunk_text
+            if rag_context:
+                prompt_chunk_text = f"{rag_context}\n\n## 待审阅合同片段\n{chunk_text}"
+
             review_prompt = build_contract_review_prompt(
                 base_prompt=base_prompt,
                 contract_type_prompt=contract_type_prompt,
@@ -71,7 +94,7 @@ class ContractReviewService:
                 intensity=intensity,
                 contract_type=contract_type,
                 context=context,
-                chunk_text=chunk_text,
+                chunk_text=prompt_chunk_text,
             )
 
             messages = [
@@ -262,10 +285,27 @@ class _FakeLLM:
         self.chat = SimpleNamespace(completions=_FakeChatCompletions())
 
 
+class _FakeRagService:
+    def retrieve_for_review(self, request):
+        return SimpleNamespace(
+            prompt_context=(
+                "## 外部法律依据\n"
+                "1. 民法典 第五百零九条\n"
+                "   来源类型：law\n"
+                "   内容：当事人应当按照约定全面履行义务。\n\n"
+                "## 内部审阅规则\n"
+                "1. 付款条款审阅规则（review_rule）\n"
+                "   规则ID：rule-1\n"
+                "   内容：付款条款必须明确付款期限。"
+            )
+        )
+
+
 async def _main_test_review_contract():
     service = ContractReviewService.__new__(ContractReviewService)
     service.llm = _FakeLLM()
     service.mcp_client = None
+    service.rag_service = _FakeRagService()
 
     model_config = SimpleNamespace(model_name="fake-contract-review-model")
     chunk_text = """
