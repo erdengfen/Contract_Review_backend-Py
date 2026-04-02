@@ -58,7 +58,7 @@ class InternalRulesRetriever:
 
     def _point_to_hit(self, point: Any) -> RetrievalHit:
         payload = getattr(point, "payload", {}) or {}
-        point_id = getattr(point, "id", payload.get("rule_id", ""))
+        point_id = payload.get("rule_id") or getattr(point, "id", "")
         score = float(getattr(point, "score", 0.0))
         return RetrievalHit(
             source_collection="internal_review_rules",

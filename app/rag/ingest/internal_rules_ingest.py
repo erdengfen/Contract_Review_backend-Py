@@ -3,12 +3,15 @@
 """
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import re
 from pathlib import Path
 from typing import Any
 
+from app.config.config import settings
+from app.rag.clients.fake_embedding import DeterministicFakeEmbeddingClient
 from app.rag.clients.embedding_local import LocalEmbeddingClient
 from app.rag.clients.qdrant_client import RagQdrantClient
 from app.rag.config import RagConfig
@@ -177,11 +180,6 @@ class InternalRulesIngestService:
         return self.ingest_records(self.load_records_from_file(file_path), batch_size=batch_size)
 
 
-class _FakeEmbeddingClient:
-    def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        return [[float(idx), float(idx + 1), float(idx + 2)] for idx, _ in enumerate(texts, start=1)]
-
-
 class _FakeQdrantClient:
     def __init__(self):
         self.upsert_calls: list[dict[str, Any]] = []
@@ -198,7 +196,7 @@ def _main_test_internal_rules_ingest():
     service = InternalRulesIngestService(
         config=RagConfig(),
         qdrant_client=_FakeQdrantClient(),
-        embedding_client=_FakeEmbeddingClient(),
+        embedding_client=DeterministicFakeEmbeddingClient(dim=8),
     )
     raw_records = [
         {
@@ -221,5 +219,37 @@ def _main_test_internal_rules_ingest():
     print("InternalRulesIngestService self test passed")
 
 
+def _run_cli(file_path: str, batch_size: int, use_fake_embedding: bool):
+    config = settings.rag_config
+    embedding_client = None
+    if use_fake_embedding:
+        embedding_client = DeterministicFakeEmbeddingClient(dim=config.qdrant.dense_vector_size)
+
+    service = InternalRulesIngestService(
+        config=config,
+        embedding_client=embedding_client,
+    )
+    result = service.ingest_file(file_path, batch_size=batch_size)
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
 if __name__ == "__main__":
-    _main_test_internal_rules_ingest()
+    parser = argparse.ArgumentParser(description="内部规则库入库入口")
+    parser.add_argument("--file", help="待入库的 JSON 或 JSONL 文件路径")
+    parser.add_argument("--batch-size", type=int, default=16, help="入库批大小")
+    parser.add_argument(
+        "--fake-embedding",
+        action="store_true",
+        help="使用假 embedding 向量，仅验证真实 Qdrant 入库链路",
+    )
+    parser.add_argument(
+        "--self-test",
+        action="store_true",
+        help="执行文件内自测",
+    )
+    args = parser.parse_args()
+
+    if args.self_test or not args.file:
+        _main_test_internal_rules_ingest()
+    else:
+        _run_cli(args.file, args.batch_size, args.fake_embedding)

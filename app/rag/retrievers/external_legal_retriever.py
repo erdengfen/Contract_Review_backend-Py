@@ -59,7 +59,7 @@ class ExternalLegalRetriever:
 
     def _point_to_hit(self, point: Any) -> RetrievalHit:
         payload = getattr(point, "payload", {}) or {}
-        point_id = getattr(point, "id", payload.get("doc_id", ""))
+        point_id = payload.get("doc_id") or getattr(point, "id", "")
         score = float(getattr(point, "score", 0.0))
         return RetrievalHit(
             source_collection="external_legal_kb",

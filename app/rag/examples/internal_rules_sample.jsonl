@@ -1,0 +1,2 @@
+{"rule_id":"rule-payment-001","rule_type":"review_rule","title":"付款条款审阅规则","content":"付款条款必须明确付款条件、付款期限和逾期责任。\n\n涉及验收的，应写明验收通过后再付款。","organization_scope":"global","contract_type_tags":["服务合同","买卖合同"],"risk_tags":["付款条款","逾期付款"],"priority":10,"enabled":true}
+{"rule_id":"rule-default-003","rule_type":"risk_rule","title":"违约责任规则","content":"违约责任条款必须量化违约金或损失赔偿机制。","organization_scope":"global","contract_type_tags":["通用合同"],"risk_tags":["违约责任"],"priority":9,"enabled":true}

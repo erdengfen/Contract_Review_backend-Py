@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import os
 import sys
+import uuid
 from typing import Any, Optional
 from pathlib import Path
 
@@ -187,6 +188,19 @@ class RagQdrantClient:
             return None
         return models.Filter(must=conditions)
 
+    @staticmethod
+    def normalize_point_id(point_id: str | int) -> str | int:
+        """
+        将业务主键转换为 Qdrant 可接受的 point ID。
+        """
+        if isinstance(point_id, int):
+            return point_id
+        try:
+            parsed = uuid.UUID(str(point_id))
+            return str(parsed)
+        except (ValueError, TypeError, AttributeError):
+            return str(uuid.uuid5(uuid.NAMESPACE_URL, str(point_id)))
+
     def build_point(
         self,
         *,
@@ -213,7 +227,7 @@ class RagQdrantClient:
                 )
             )
         return models.PointStruct(
-            id=point_id,
+            id=self.normalize_point_id(point_id),
             vector=vectors,
             payload=payload,
         )
@@ -238,13 +252,10 @@ class RagQdrantClient:
         正式实现时需要与实际命名向量字段保持一致。
         """
         client = self.get_client()
-        models = self._load_models()
         return client.query_points(
             collection_name=collection_name,
-            query=models.NamedVector(
-                name=vector_name or self.default_dense_vector_name,
-                vector=query_vector,
-            ),
+            query=query_vector,
+            using=vector_name or self.default_dense_vector_name,
             query_filter=query_filter,
             limit=limit,
             **kwargs,
@@ -266,18 +277,10 @@ class RagQdrantClient:
         正式实现时需要传入 Qdrant 所需的 sparse query 结构。
         """
         client = self.get_client()
-        models = self._load_models()
-        query = (
-            sparse_query
-            if isinstance(sparse_query, models.NamedSparseVector)
-            else models.NamedSparseVector(
-                name=vector_name or self.default_sparse_vector_name,
-                vector=sparse_query,
-            )
-        )
         return client.query_points(
             collection_name=collection_name,
-            query=query,
+            query=sparse_query,
+            using=vector_name or self.default_sparse_vector_name,
             query_filter=query_filter,
             limit=limit,
             **kwargs,
@@ -393,6 +396,8 @@ def _main_test_qdrant_client():
         sparse_indices=[1, 2],
         sparse_values=[0.5, 0.6],
     )
+    assert isinstance(point.id, str)
+    assert point.id != "doc-1"
     result = client.upsert("demo", [point])
     assert result["points_count"] == 1
 

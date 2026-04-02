@@ -62,6 +62,22 @@
 - 已创建 `app/rag/ingest/external_legal_ingest.py`，完成外部法律库首版入库链路。
 - 已创建 `app/rag/ingest/internal_rules_ingest.py`，完成内部规则库首版入库链路。
 - 已为上述入库文件补齐文件内自测入口。
+- 已为 `external_legal_ingest.py` 和 `internal_rules_ingest.py` 增加 CLI 入口。
+- 已准备最小 JSONL 样本：
+- `app/rag/examples/external_legal_sample.jsonl`
+- `app/rag/examples/internal_rules_sample.jsonl`
+- 已修正 Qdrant point ID 约束：业务 `doc_id/rule_id` 保留在 payload 中，实际 point ID 转为稳定 UUID。
+- 已在真实 Qdrant 容器上完成最小样本入库验证：
+- 外部法律库样本入库 2 条
+- 内部规则库样本入库 3 条
+- 本轮验证使用 `--fake-embedding`，验证目标是“真实 Qdrant upsert 链路”，不是“真实本地 embedding 模型效果”
+- 已创建 `app/rag/clients/fake_embedding.py`，统一假 embedding 逻辑，供入库和检索链路共同使用。
+- 已创建 `app/rag/services/retrieval_validation.py`，用于真实 Qdrant 检索链路验证。
+- 已在真实 Qdrant 容器上完成检索验证：
+- 能返回外部法律命中
+- 能返回内部规则命中
+- 能生成分段的 `prompt_context`
+- 本轮检索验证仍使用 `--fake-embedding`，验证目标是“真实检索链路结构可用”，不是“真实 embedding 模型效果”
 
 ### 未完成
 - 尚未下载和验证本地 embedding 模型权重。
@@ -72,8 +88,8 @@
 - 尚未在应用启动阶段完成真实 Qdrant 连通性检查和 collection 初始化。
 - 尚未在真实业务入口中验证“分块 -> RAG -> prompt 注入 -> 模型调用”端到端链路。
 - 尚未解决路由导入时会触发数据库初始化的全局副作用，因此当前无法在无数据库环境下完成 `review_task` 的纯导入级冒烟测试。
-- 尚未用真实法规样本和真实内部规则样本执行入库联调。
-- 尚未实现入库 CLI 或脚本入口。
+- 尚未用真实本地 embedding 模型完成入库联调。
+- 尚未用真实本地 embedding 模型完成检索联调。
 
 ## Constraints
 - Qdrant 必须独立容器部署。
@@ -241,8 +257,9 @@
 - 在真实 Qdrant 容器环境下执行 `qdrant_setup.py`，完成双 collection 初始化验证。
 - 为 `review_task` 所在链路准备最小联调环境，至少具备数据库可连通条件，再做端到端验证。
 - 下一步建议优先补：
-- 为 `external_legal_ingest.py` 和 `internal_rules_ingest.py` 增加 CLI 入口。
-- 准备最小 JSONL 样本并在真实 Qdrant 容器上完成一次端到端入库验证。
+- 在真实 Qdrant 容器上用最小样本完成入库验证。
+- 再补真实 embedding 模型联调，而不是继续依赖 `--fake-embedding`。
+- 完成真实 Qdrant 检索验证后，再推进 `review_contract` 端到端联调。
 1. `config.py`
 2. `schemas.py`
 3. `clients/qdrant_client.py`
