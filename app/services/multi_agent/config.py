@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
+from pathlib import Path
 
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from app.config.config import settings
+from app.config.config import BASE_DIR, settings
 
 
 def _read_env(name: str, default):
@@ -68,12 +69,30 @@ class MultiAgentDemoConfig(BaseModel):
     default_stance: str = Field(default="甲方", description="默认审阅立场")
     default_intensity: str = Field(default="标准", description="默认审阅强度")
     default_contract_type: str = Field(default="通用", description="默认合同类型")
+    test_docx_dir: str = Field(
+        default=str((BASE_DIR / "data").resolve()),
+        description="测试合同 docx 文件所在目录，不包含文件名",
+    )
+    result_dir: str = Field(
+        default=str((Path(__file__).resolve().parent / "result").resolve()),
+        description="multi_agent demo 结果输出目录",
+    )
 
 
 @lru_cache(maxsize=1)
 def get_multi_agent_demo_config() -> MultiAgentDemoConfig:
     """返回 multi_agent demo 配置。"""
     return MultiAgentDemoConfig()
+
+
+def ensure_multi_agent_demo_result_dir(
+    config: MultiAgentDemoConfig | None = None,
+) -> Path:
+    """确保 multi_agent demo 结果目录存在。"""
+    active_config = config or get_multi_agent_demo_config()
+    result_dir = Path(active_config.result_dir)
+    result_dir.mkdir(parents=True, exist_ok=True)
+    return result_dir
 
 
 def init_multi_agent_demo_llm(
