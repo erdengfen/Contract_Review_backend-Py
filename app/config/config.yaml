@@ -78,6 +78,10 @@ logging_config:
   encoding: "utf-8"
 
 rag_config:
+  startup:
+    enabled: true
+    ensure_qdrant_collections: true
+    fail_fast: false
   rerank:
     enabled: true
     remote_provider: "siliconflow"

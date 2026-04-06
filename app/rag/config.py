@@ -124,6 +124,21 @@ class RagQdrantConfig(BaseModel):
     )
 
 
+class RagStartupConfig(BaseModel):
+    enabled: bool = Field(
+        True,
+        description="应用启动时是否执行 RAG 健康检查。",
+    )
+    ensure_qdrant_collections: bool = Field(
+        True,
+        description="启动时是否检查并补齐默认 Qdrant collections。",
+    )
+    fail_fast: bool = Field(
+        False,
+        description="启动检查失败时是否中断应用启动。",
+    )
+
+
 class RagRetrievalConfig(BaseModel):
     enabled: bool = Field(
         True,
@@ -222,6 +237,10 @@ class RagConfig(BaseModel):
     qdrant: RagQdrantConfig = Field(
         default_factory=RagQdrantConfig,
         description="Qdrant 连接配置。",
+    )
+    startup: RagStartupConfig = Field(
+        default_factory=RagStartupConfig,
+        description="RAG 启动检查配置。",
     )
     retrieval: RagRetrievalConfig = Field(
         default_factory=RagRetrievalConfig,

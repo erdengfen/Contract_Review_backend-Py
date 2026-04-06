@@ -86,6 +86,10 @@
 - 已完成真实入库后的检索命中验证
 - 已完成真实 `prompt_context` 生成验证
 - 已创建 `app/rag/services/review_contract_validation.py`，用于 `review_contract` 端到端联调验证。
+- 已将 `app/rag/services/review_contract_validation.py` 扩展为脱离数据库与 MCP 的真实健康检查入口：
+- 保留文件内 fake LLM 自测
+- 新增真实 `ContractReviewService.review_contract()` 调用路径
+- 默认使用假 RAG 上下文，避免在本机开发环境依赖 Qdrant / embedding / MCP
 - 已创建 `app/rag/clients/rerank_remote.py`，完成远程 reranker 客户端首版接入。
 - 已将远程 reranker 客户端接入 `build_rag_service`，未配置时自动降级为无 rerank。
 - 已补齐远程 reranker 的通用请求/响应协议、HTTP 自测和部分结果回填逻辑。
@@ -96,17 +100,39 @@
 - 模型：`Qwen/Qwen3-Reranker-8B`
 - 已通过真实请求完成最小联调验证，确认 rerank 代码路径可直连 SiliconFlow。
 - 已将 LLM 与 RAG rerank 的 API Key 调整为环境变量覆盖，`app/config/config.yaml` 不再保存明文 key。
+- 已将 `app/router/review_task.py` 的审阅主链路抽出为 `iter_review_task_events()`，便于复用真实路由逻辑做联调。
+- 已移除 `review_task` 主链路中直接打印模型 API Key 的风险日志，联调时不再扩散敏感信息。
+- 已创建最小 `review_task` 联调样本：
+- `app/rag/examples/review_task_minimal_contract.txt`
+- `app/rag/examples/review_task_minimal_sample.json`
+- 已创建 `app/rag/services/review_task_validation.py`，支持：
+- 写入最小数据库样本
+- 复用 `review_task` 路由主链路执行真实联调
+- 输出事件摘要、样本路径和默认模型快照
+- 已创建 `app/rag/services/remote_embedding_validation.py`，用于真实 remote embedding provider 联调，并可选串联真实 Qdrant 检索链路。
+- 已在 `app/rag/config.py` 中新增 RAG 启动检查配置，并在 `main_new.py` 启动阶段接入 Qdrant 连通性检查、默认 collection 检查与 RAG 服务预热。
+- 已补充远程 embedding 与启动检查相关环境变量覆盖：
+- `RAG_EMBEDDING_PROVIDER_MODE`
+- `RAG_EMBEDDING_REMOTE_PROVIDER`
+- `RAG_EMBEDDING_REMOTE_MODEL`
+- `RAG_EMBEDDING_REMOTE_BASE_URL`
+- `RAG_EMBEDDING_REMOTE_TIMEOUT`
+- `RAG_STARTUP_ENABLED`
+- `RAG_STARTUP_ENSURE_QDRANT_COLLECTIONS`
+- `RAG_STARTUP_FAIL_FAST`
 
 ### 未完成
 - 尚未实现 sparse embedding 生成策略。
-- 尚未实现远程 embedding provider 的业务联调验证。
-- 尚未在应用启动阶段完成真实 Qdrant 连通性检查和 collection 初始化。
+- 已补远程 embedding provider 联调入口，但尚未在真实远程 provider + 真实 Qdrant 环境完成业务联调验证。
+- 已补启动阶段的 Qdrant 健康检查接线，但尚未在真实启动流程中完成连通性与默认 collection 校验验收。
 - 尚未在真实业务入口中验证“分块 -> RAG -> prompt 注入 -> 模型调用”端到端链路。
 - 尚未解决路由导入时会触发数据库初始化的全局副作用，因此当前无法在无数据库环境下完成 `review_task` 的纯导入级冒烟测试。
 - 当前环境仍无法完成 `review_task` 真正端到端联调：
 - `mysql-prod` 主机名无法解析，数据库不可达
 - 本机 `127.0.0.1:8081` 未发现可用 MCP 服务
 - 因此尚未在“数据库 + MCP + RAG”齐备环境下完成真实业务入口联调
+- 当前环境也尚未完成 `review_contract` 的真实在线模型联调：
+- `OPENAI_API_KEY` 未配置，无法发起真实 LLM 请求
 
 ## Constraints
 - Qdrant 必须独立容器部署。
@@ -293,11 +319,11 @@
 16. 接入 `app/services/contract_review.py`
 
 ## Next Step
-1. 在可用环境中恢复 `mysql-prod` 与 `mcp-server:8081` 连通性，执行 `review_task` 真实端到端联调
-2. 记录 `review_task` 联调所使用的最小数据库样本、合同文件和默认模型配置，沉淀可复现步骤
-3. 补真实远程 embedding provider 的业务联调验证
-4. 在应用启动阶段补充真实 Qdrant 连通性检查和默认 collection 状态检查
-5. 视联调结果决定是否补 `review_task` / `review_contract` 的最小回归验证入口
+1. 在可解析 `mysql-prod` 且可访问 `mcp-server:8081` 的环境执行 `uv run python app/rag/services/review_task_validation.py --prepare-sample`
+2. 核对输出中的数据库样本、合同路径和默认模型快照，确认最小联调样本可复现
+3. 在同一环境执行 `uv run python app/rag/services/remote_embedding_validation.py --with-retrieval`，完成真实 remote embedding provider 联调
+4. 用 `uv run uvicorn main_new:app --host 0.0.0.0 --port 8080` 验证启动阶段的 Qdrant 健康检查日志与默认 collection 状态
+5. 视真实联调结果决定是否补 `review_task` / `review_contract` 的最小回归验证入口
 
 ## Non-Goals For First Iteration
 - 不要第一版就做复杂评测平台。

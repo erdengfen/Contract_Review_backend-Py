@@ -13,6 +13,7 @@ from starlette.staticfiles import StaticFiles
 from app.core.config import APP_NAME, APP_VERSION
 from app.config.config import settings
 from app.core.global_init import llm_manager, redis_handler
+from app.rag.services.bootstrap import initialize_rag_runtime
 
 from app.middlewares.auth import verify_token
 from fastapi.responses import FileResponse
@@ -76,7 +77,9 @@ app.mount(
 async def startup_event():
     """应用启动时初始化系统"""
     logger.info(" 启动合同审阅系统...")
-    # await init_services()  # 已废弃旧的初始化逻辑
+    rag_runtime = initialize_rag_runtime()
+    if rag_runtime.get("qdrant"):
+        logger.info(f" RAG 启动检查结果: {rag_runtime}")
     logger.info(" 系统初始化完成")
 
 # @app.on_event("shutdown")

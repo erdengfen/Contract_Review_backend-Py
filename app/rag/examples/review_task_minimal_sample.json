@@ -1,0 +1,41 @@
+{
+  "user": {
+    "id": 900001,
+    "username": "rag_review_task_e2e"
+  },
+  "contract_file": {
+    "id": 900001,
+    "type": "parsed",
+    "title": "RAG 最小联调样本合同",
+    "file_type": "txt",
+    "party_a": "重庆甲方科技有限公司",
+    "party_b": "重庆乙方法务服务有限公司",
+    "amount": 120000.0,
+    "contract_content_relative_path": "app/rag/examples/review_task_minimal_contract.txt"
+  },
+  "session": {
+    "id": 900001,
+    "title": "RAG review_task 最小联调会话",
+    "session_type": "review"
+  },
+  "review_request": {
+    "stance": "甲方",
+    "intensity": "标准",
+    "contract_type": "服务类合同",
+    "description": "验证 review_task 主链路的数据库、MCP、RAG 与模型调用联通性。",
+    "max_concurrent": 4
+  },
+  "default_chat_model": {
+    "id": 900001,
+    "model_name": "deepseek-ai/DeepSeek-V3.2",
+    "model_type": "chat",
+    "provider": "siliconflow",
+    "api_endpoint": "https://api.siliconflow.com/v1",
+    "temperature": 0.7,
+    "top_p": 0.95,
+    "presence_penalty": 0.0,
+    "frequency_penalty": 0.0,
+    "max_tokens": 2048,
+    "api_key_env": "OPENAI_API_KEY"
+  }
+}

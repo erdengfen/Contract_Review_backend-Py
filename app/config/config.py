@@ -113,16 +113,28 @@ def _set_nested_config(raw_config: dict, keys: tuple[str, ...], value):
     current[keys[-1]] = value
 
 
+def _cast_bool(value: str) -> bool:
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _apply_env_overrides(raw_config: dict):
     env_mapping = {
         "OPENAI_API_KEY": (("openai_config", "api_key"), str),
         "OPENAI_API_BASE": (("openai_config", "api_base"), str),
         "OPENAI_MODEL": (("openai_config", "model"), str),
+        "RAG_EMBEDDING_PROVIDER_MODE": (("rag_config", "embedding", "provider_mode"), str),
+        "RAG_EMBEDDING_REMOTE_PROVIDER": (("rag_config", "embedding", "remote_provider"), str),
+        "RAG_EMBEDDING_REMOTE_MODEL": (("rag_config", "embedding", "remote_model"), str),
+        "RAG_EMBEDDING_REMOTE_BASE_URL": (("rag_config", "embedding", "remote_base_url"), str),
+        "RAG_EMBEDDING_REMOTE_TIMEOUT": (("rag_config", "embedding", "remote_timeout"), int),
         "RAG_RERANK_REMOTE_PROVIDER": (("rag_config", "rerank", "remote_provider"), str),
         "RAG_RERANK_REMOTE_MODEL": (("rag_config", "rerank", "remote_model"), str),
         "RAG_RERANK_REMOTE_BASE_URL": (("rag_config", "rerank", "remote_base_url"), str),
         "RAG_RERANK_REMOTE_PATH": (("rag_config", "rerank", "remote_path"), str),
         "RAG_RERANK_REMOTE_TIMEOUT": (("rag_config", "rerank", "remote_timeout"), int),
+        "RAG_STARTUP_ENABLED": (("rag_config", "startup", "enabled"), _cast_bool),
+        "RAG_STARTUP_ENSURE_QDRANT_COLLECTIONS": (("rag_config", "startup", "ensure_qdrant_collections"), _cast_bool),
+        "RAG_STARTUP_FAIL_FAST": (("rag_config", "startup", "fail_fast"), _cast_bool),
     }
 
     for env_name, (config_keys, caster) in env_mapping.items():
