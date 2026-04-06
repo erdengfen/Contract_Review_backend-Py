@@ -7,6 +7,7 @@ from .config import (
     get_multi_agent_demo_config,
     init_multi_agent_demo_llm,
 )
+from .merge_arbitration_demo import MergeArbitrationReviewDemo
 from .review_toolkit import MultiAgentReviewToolkit, ParsedContract
 from .linear_pipeline_demo import LinearPipelineReviewDemo
 
@@ -14,6 +15,7 @@ __all__ = [
     "MultiAgentDemoConfig",
     "MultiAgentDemoModelConfig",
     "LinearPipelineReviewDemo",
+    "MergeArbitrationReviewDemo",
     "MultiAgentReviewToolkit",
     "ParsedContract",
     "ensure_multi_agent_demo_result_dir",
