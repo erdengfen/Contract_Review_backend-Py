@@ -126,7 +126,8 @@ class MultiAgentReviewToolkit(ContractReviewService):
                 {"role": "system", "content": REVIEW_SYSTEM_PROMPT},
                 {"role": "user", "content": review_prompt},
             ]
-            response = self.llm.chat.completions.create(
+            response = await asyncio.to_thread(
+                self.llm.chat.completions.create,
                 model=self.model_config.model_name,
                 messages=messages,
                 tools=[],
