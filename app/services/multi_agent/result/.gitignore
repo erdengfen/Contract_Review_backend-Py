@@ -1,3 +1,4 @@
 *.txt
 !.gitignore
 !.gitkeep
+*.json
