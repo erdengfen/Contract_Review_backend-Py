@@ -33,3 +33,6 @@ __pycache__/
 
 *.tar
 graph.md
+
+# 架构边界说明文档
+src/**/BOUNDARY.md

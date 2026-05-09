@@ -174,15 +174,15 @@ src/
 
 ### Step 1：后端与 agent 完全解耦并建立文件结构
 
-- 【】建立 `src/backend/`、`src/agent/`、`src/shared/` 的基础目录结构。
-- 【】在 `src/backend/agent_client/` 建立调用 agent 能力接口的客户端适配层位置。
-- 【】在 `src/agent/api/` 建立 agent 对外能力接口位置，预留 review、chat、health 等入口。
-- 【】在 `src/agent/contracts/` 建立 agent 能力接口请求和响应契约位置。
-- 【】在 `src/agent/llm/` 和 `src/agent/infrastructure/` 建立模型网关、模型配置读取和密钥读取边界。
-- 【】梳理当前 backend 中直接实例化 LLM、model、OpenAI SDK 的位置，形成迁移清单。
-- 【】明确 backend 禁止向 agent 传递 API key、OpenAI client、LLM 实例和模型 SDK 对象。
-- 【】明确 agent 不能 import backend 的 router、schema、CRUD、SQLAlchemy model、鉴权和中间件。
-- 【】完成目录结构和依赖边界检查，不改现有 FastAPI 对外字段。
+- √ 建立 `src/backend/`、`src/agent/`、`src/shared/` 的基础目录结构。
+- √ 在 `src/backend/agent_client/` 建立调用 agent 能力接口的客户端适配层位置。
+- √ 在 `src/agent/api/` 建立 agent 对外能力接口位置，预留 review、chat、health 等入口。
+- √ 在 `src/agent/contracts/` 建立 agent 能力接口请求和响应契约位置。
+- √ 在 `src/agent/llm/` 和 `src/agent/infrastructure/` 建立模型网关、模型配置读取和密钥读取边界。
+- √ 梳理当前 backend 中直接实例化 LLM、model、OpenAI SDK 的位置，形成迁移清单。
+- √ 明确 backend 禁止向 agent 传递 API key、OpenAI client、LLM 实例和模型 SDK 对象。
+- √ 明确 agent 不能 import backend 的 router、schema、CRUD、SQLAlchemy model、鉴权和中间件。
+- √ 完成目录结构和依赖边界检查，不改现有 FastAPI 对外字段。
 
 ### Step 2：agent 能力接口出入参与现有接口基线冻结
 
@@ -300,6 +300,7 @@ src/
 | 2026-05-09 | 增加文档读取策略 | 已完成 | 在 `AGENTS.md` 增加进入任务前的文档读取要求。 |
 | 2026-05-09 | 改版为 agent 架构重构计划 | 已完成 | 将原阶段计划改为以后端和 agent 解耦为核心的重构计划，并纳入会议记录。 |
 | 2026-05-09 | 明确 backend 与 agent 完全服务解耦方向 | 已完成 | Step 1 调整为先建立 backend、agent、shared 文件结构和依赖边界，并禁止 backend 持有 agent 侧 LLM / OpenAI SDK 实例。 |
+| 2026-05-09 | 完成 Step 1 目录边界与调用点扫描 | 已完成 | 新增 `src/` 目标目录说明和 `docs/AGENT_BACKEND_DECOUPLING_SCAN.md`，记录 backend 中 LLM、OpenAI SDK、model_config 迁移清单。 |
 
 ## 阶段记录模板
 
