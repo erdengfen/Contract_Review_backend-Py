@@ -2,6 +2,7 @@
 
 ## 最高优先级约束
 - 所有 FastAPI 接口的数据字段，即当前已存在的后端接口入参字段与出参字段，禁止做任何更改。
+- 旧版本业务逻辑依赖 `app/` 下现有实现，新版本重构在 `src/` 下开发；`docs/LEGACY_AGENT_FIELD_BASELINE.md` 记录的均为旧版本字段详情，重构过程中必须参照该文档进行 agent 与 backend 的字段设计。
 
 ## Scope
 - 本文件适用于整个仓库。
@@ -11,6 +12,7 @@
 - 进入开发任务时，先读本文件确认项目边界和执行约束，再按任务类型读取对应文档。
 - 涉及测试与验收标准，读 `docs/TESTING.md`。
 - 涉及代码编写、修改、重构，必须读 `docs/CODE_STYLE.md`。
+- 涉及 agent、backend 解耦或能力接口字段设计，必须读 `docs/LEGACY_AGENT_FIELD_BASELINE.md`。
 - 涉及分步开发长任务，必须更新 `PLANS.md`。
 
 ## Environment

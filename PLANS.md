@@ -12,6 +12,9 @@
 - 后端逻辑与 agent 能力逻辑需要完全解耦：后端负责接口、鉴权、任务、会话、落库和状态；agent 负责文档感知、解析、分块、RAG、skills、多 agent 编排、LLM 调用和结构化输出。
 - `src/backend/` + `src/agent/` 作为目标架构方向可行；第一步先建立对应文件结构和边界，之后再通过契约层和适配层迁移主审阅链路。
 - `app/services/multi_agent/` 当前仍按实验区看待，不能直接作为生产入口接入。
+- 当前开发文档优先推进 agent 侧重构；backend 暂时只作为既有 FastAPI 字段来源、兼容包装层和 agent 能力调用方记录。
+- Step 2 只处理当前代码已有字段和可推导字段，不纳入知识库版本、Langfuse trace、重向量化等后续新增能力。
+- Step 2 的旧版本字段来源、字段映射和禁止项详见 `docs/LEGACY_AGENT_FIELD_BASELINE.md`，`PLANS.md` 只保留阶段计划和进度摘要。
 
 ## 当前对外接口基线
 
@@ -58,7 +61,7 @@
 - `backend` 只能调用 `agent` 暴露的能力接口、客户端适配器或过渡期本地 facade。
 - `agent` 不允许反向依赖 FastAPI 路由、SQLAlchemy 模型、CRUD、鉴权或中间件。
 - `agent` 返回结构化结果，由 `backend` 负责转换成现有 SSE 和数据库记录。
-- `backend` 调用 `agent` 时只传 `user_id`、`query`、`context`、`file_id`、`session_id`、文件引用和追踪标识等业务参数，不传 API key、OpenAI client、LLM 实例或模型 SDK 对象。
+- `backend` 调用 `agent` 时只传当前 FastAPI 入参、登录用户、会话、文件记录和已存在处理流程能提供的业务参数，不传 API key、OpenAI client、LLM 实例或模型 SDK 对象。
 - `agent` 如需访问模型配置或密钥，只能通过 agent 自己的配置读取或数据库访问边界完成。
 - 共享配置、错误类型、日志结构可以放到 `shared`，但不得让 `shared` 变成业务逻辑堆放区。
 
@@ -184,23 +187,25 @@ src/
 - √ 明确 agent 不能 import backend 的 router、schema、CRUD、SQLAlchemy model、鉴权和中间件。
 - √ 完成目录结构和依赖边界检查，不改现有 FastAPI 对外字段。
 
-### Step 2：agent 能力接口出入参与现有接口基线冻结
+### Step 2：现有字段来源核对与 agent 入参最小契约
 
-- 【】定义 backend 调用 agent 审阅能力的最小入参，包括 `user_id`、`query`、`context`、`file_id`、`session_id`、文件引用和 trace 标识。
-- 【】定义 backend 调用 agent 聊天能力的最小入参，包括 `user_id`、`query`、`context`、`session_id` 和历史消息引用。
-- 【】定义 agent 能力接口的标准出参，包括结构化结果、错误信息、trace 信息、知识库版本和可恢复失败状态。
-- 【】固化当前审阅接口、聊天接口、上传接口、历史接口的路径和字段。
-- 【】整理 `/api/review_task/start_task` 的 SSE 事件样例，包括 `message`、`end`、`error`。
-- 【】生成或记录当前 OpenAPI 快照，作为后续重构兼容性对比基线。
-- 【】明确哪些现有 FastAPI 接口只属于 backend，哪些会通过 backend 转调 agent。
-- 【】完成只读检查和人工确认，不修改业务代码。
+详细字段来源、字段映射和禁止项已经迁移到 `docs/LEGACY_AGENT_FIELD_BASELINE.md`。该文档记录旧版本 `app/` 逻辑下的字段基线，新版本 `src/` 下 backend 与 agent 的契约设计必须参照该文档。
+
+- √ 完成审阅能力入参来源核对。
+- √ 完成聊天能力入参来源核对。
+- √ 完成文件感知与合同信息抽取入参来源核对。
+- √ 完成 agent 返回字段与现有后端消费点核对。
+- √ 明确 Step 2 不设计知识库版本、Langfuse trace、重向量化、模型配置透传和 SDK 实例透传。
+- √ 将 Step 2 详细核对结果迁移到 `docs/LEGACY_AGENT_FIELD_BASELINE.md`。
+
+Step 2 结论只允许用于当前基础重构：agent 入参和返回字段必须来自现有 FastAPI 入参、登录用户、会话记录、文件记录和现有流程中已经可获得的字段，不能凭空新增字段。
 
 ### Step 3：agent 契约层设计
 
-- 【】定义 `ReviewRequest`，承载审阅所需的合同文本、合同类型、审查立场、审查尺度、上下文和追踪信息。
+- 【】定义 `ReviewRequest`，承载审阅所需的现有可用字段：合同文本或文件引用、合同类型、审查立场、审查尺度、审查需求和上下文。
 - 【】定义 `ReviewResult`，承载风险点、风险等级、风险分析、建议修改内容、证据和失败兜底信息。
 - 【】定义 `DocumentBlock`，承载分块文本、页码、版面序号、源文本定位和后续修改定位参数。
-- 【】定义 `KnowledgeHit`，承载 RAG 命中条文、来源、知识库版本和可追溯标识。
+- 【】定义 `KnowledgeHit`，承载当前可用的 RAG 命中条文和来源信息；知识库版本不在当前基础重构阶段引入。
 - 【】补充契约层结构测试，不接真实模型和外部服务。
 
 ### Step 4：文档感知与存储安全
@@ -267,11 +272,12 @@ src/
 ## 迁移策略
 
 - 第一阶段先建立 backend、agent、shared 的文件结构和依赖边界，不改现有接口字段和业务表结构。
-- 第二阶段定义 backend 调用 agent 能力接口的出入参，重点确认 `user_id`、`query`、`context`、文件引用、trace 标识等业务参数。
-- 第三阶段在 agent 模块中做可运行的最小链路，用假模型和样例文本验证结构。
-- 第四阶段通过 backend 的 agent client 适配层把 agent 输出转换成现有 `ReviewTaskSSEResponse` 和审阅结果落库字段。
+- 第二阶段只基于现有 FastAPI 入参、登录用户、会话、文件记录和现有处理流程核对 agent 能力接口出入参，不设计后续新增字段。
+- 第三阶段开始优先推进 agent 契约、文档感知、解析、分块、RAG、skills 和多 agent 编排。
+- 第四阶段在 agent 模块中做可运行的最小链路，用假模型和样例文本验证结构。
 - 第五阶段逐步把 `ContractReviewService` 中的 prompt 拼装、RAG、解析、LLM 调用和 OpenAI SDK 实例迁移到 agent 内部模块。
-- 第六阶段再评估是否将 `main_new.py`、`app/router/`、`app/schemas/` 迁移到 `src/backend/`。
+- 第六阶段通过 backend 的 agent client 适配层把 agent 输出转换成现有 `ReviewTaskSSEResponse` 和审阅结果落库字段。
+- 第七阶段再评估是否将 `main_new.py`、`app/router/`、`app/schemas/` 迁移到 `src/backend/`。
 
 ## 不在本轮优先处理
 
@@ -301,6 +307,13 @@ src/
 | 2026-05-09 | 改版为 agent 架构重构计划 | 已完成 | 将原阶段计划改为以后端和 agent 解耦为核心的重构计划，并纳入会议记录。 |
 | 2026-05-09 | 明确 backend 与 agent 完全服务解耦方向 | 已完成 | Step 1 调整为先建立 backend、agent、shared 文件结构和依赖边界，并禁止 backend 持有 agent 侧 LLM / OpenAI SDK 实例。 |
 | 2026-05-09 | 完成 Step 1 目录边界与调用点扫描 | 已完成 | 新增 `src/` 目标目录说明和 `docs/AGENT_BACKEND_DECOUPLING_SCAN.md`，记录 backend 中 LLM、OpenAI SDK、model_config 迁移清单。 |
+| 2026-05-09 | 调整 Step 2 字段来源规则 | 已完成 | Step 2 改为先核对现有 FastAPI 字段来源和 agent 入参最小契约，移除知识库版本、trace 等后续新增能力。 |
+| 2026-05-09 | 完成 Step 2.1 审阅能力入参来源核对 | 已完成 | 已确认审阅 agent 最小入参只能来自 `ReviewTaskCreateRequest`、`current_user.id`、会话 `file_id` 和合同文件记录，禁止透传模型配置或 SDK 实例。 |
+| 2026-05-09 | 完成 Step 2.2 聊天能力入参来源核对 | 已完成 | 已确认聊天 agent 最小入参只能来自 `ChatRequest`、可选 `current_user.id`、会话 `file_id` 和历史消息，且必须兼容 `user_id=None`。 |
+| 2026-05-09 | 完成 Step 2.3 文件感知入参来源核对 | 已完成 | 已确认文件感知 agent 最小入参只能来自 `UploadFile` 保存后的文件引用、`current_user.id`、文件名和文件类型，上传响应字段保持不变。 |
+| 2026-05-09 | 完成 Step 2.4 agent 返回字段映射核对 | 已完成 | 已确认审阅、聊天、文件感知 agent 输出必须映射到现有 SSE、落库字段和上传响应字段，不新增返回结构。 |
+| 2026-05-09 | 完成 Step 2.5 本阶段禁止项核对 | 已完成 | 已确认 Step 2 不设计知识库版本、Langfuse trace、重向量化、模型配置透传和 SDK 实例透传。 |
+| 2026-05-09 | 迁移 Step 2 详细字段基线 | 已完成 | 已将 Step 2 详细核对内容迁移到 `docs/LEGACY_AGENT_FIELD_BASELINE.md`，`PLANS.md` 只保留必要摘要。 |
 
 ## 阶段记录模板
 
