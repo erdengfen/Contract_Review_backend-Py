@@ -13,7 +13,7 @@
 - backend 不允许向 agent 传递 `model_config`、API key、OpenAI client、LLM 实例或模型 SDK 对象。
 - 知识库版本、Langfuse trace、重向量化等属于后续新增能力，不属于当前旧版本字段基线。
 
-## Step 2：现有字段来源核对与 Agent 入参最小契约
+## Step 2：现有字段来源核对与 Agent 完整业务字段契约
 
 本步骤只允许使用当前 FastAPI 接口、登录用户、会话、文件记录和现有处理流程中已经存在的字段。禁止凭空新增 `trace`、知识库版本、重向量化参数、模型配置、API key 或 SDK 实例字段。
 
@@ -32,7 +32,7 @@
 
 #### Step 2.1 核对结论
 
-- agent 审阅能力最小入参只能来自现有字段：`session_id`、`user_id`、`file_id`、`contract_content_path`、`file_path`、`file_type`、`stance`、`intensity`、`contract_type`、`description`。
+- agent 审阅能力完整业务入参字段只能来自现有字段：`session_id`、`user_id`、`file_id`、`contract_content_path`、`file_path`、`file_type`、`stance`、`intensity`、`contract_type`、`description`。
 - `session_id` 来源于 `ReviewTaskCreateRequest.session_id`。
 - `user_id` 来源于 `current_user.id`。
 - `file_id` 来源于 `CRUDReviewTask.create_review_task` 内部通过 `request.session_id` 查询到的 `session.file_id`，并写入 `review_task.file_id`。
@@ -54,7 +54,7 @@
 
 #### Step 2.2 核对结论
 
-- agent 聊天能力最小入参只能来自现有字段：`session_id`、`user_id`、`file_id`、`content`、`parent_id`、`history`。
+- agent 聊天能力完整业务入参字段只能来自现有字段：`session_id`、`user_id`、`file_id`、`content`、`parent_id`、`history`。
 - `session_id` 来源于 `ChatRequest.session_id`。
 - `content` 来源于 `ChatRequest.content`，对应 agent 聊天 query。
 - `parent_id` 来源于 `ChatRequest.parent_id`，当前只用于保存用户消息，未参与模型上下文拼装。
@@ -80,7 +80,7 @@
 
 #### Step 2.3 核对结论
 
-- 文件感知 agent 最小入参只能来自现有字段：`user_id`、`filename`、`file_type`、`save_path`。
+- 文件感知 agent 完整业务入参字段只能来自现有字段：`user_id`、`filename`、`file_type`、`save_path`。
 - `file` 来源于 FastAPI `UploadFile`，当前 backend 会先把文件保存到 `save_path`，再按文件类型解析。
 - `user_id` 来源于 `current_user.id`；当前未登录直接返回 401，因此文件感知 agent 不需要兼容 `user_id=None`。
 - `filename` 来源于 `file.filename`；当前为空时返回 400。
@@ -103,7 +103,7 @@
 
 #### Step 2.4 核对结论
 
-- 审阅 agent 返回的单条风险点最小字段为 `original_content`、`risk_analysis`、`risk_level`、`suggested_content`，这些字段会被 backend 写入 `CRUDReviewResult.create_review_result`。
+- 审阅 agent 返回的单条风险点基础落库字段为 `original_content`、`risk_analysis`、`risk_level`、`suggested_content`，这些字段会被 backend 写入 `CRUDReviewResult.create_review_result`。
 - 审阅 agent 的错误输出不能直接改变 SSE 结构，必须由 backend 映射为 `ReviewTaskSSEResponse(event="error", data={"message": ...})`。
 - 审阅完成事件当前由 backend 根据风险点数量生成 `summary` 和 `suggestion`，agent 基础重构阶段不需要新增完成摘要字段。
 - 聊天 agent 的流式内容应由 backend 映射为 `data: {...}` 格式，其中内容增量字段为 `content`，角色固定为 `assistant`。

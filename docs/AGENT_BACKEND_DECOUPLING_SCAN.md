@@ -81,7 +81,7 @@ rg -n "from openai|import openai|from langchain_openai|init_llm\(|AsyncClient\(|
 ### `app/services/multi_agent/config.py`
 
 - `app/services/multi_agent/config.py:9` 导入 `OpenAI`。
-- `app/services/multi_agent/config.py:98` 定义 demo LLM 初始化函数。
+- `app/services/multi_agent/config.py:98` 定义试验链路 LLM 初始化函数。
 - `app/services/multi_agent/config.py:107` 创建 OpenAI 客户端。
 - 迁移方向：该目录当前仍是实验区；后续迁移时只保留可复用设计，不直接接入生产 backend。
 

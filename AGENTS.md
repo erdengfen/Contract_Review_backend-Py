@@ -13,6 +13,7 @@
 - 涉及测试与验收标准，读 `docs/TESTING.md`。
 - 涉及代码编写、修改、重构，必须读 `docs/CODE_STYLE.md`。
 - 涉及 agent、backend 解耦或能力接口字段设计，必须读 `docs/LEGACY_AGENT_FIELD_BASELINE.md`。
+- 涉及 `src/agent/contracts/` 契约层实现，必须读 `docs/AGENT_CONTRACT_DESIGN.md`。
 - 涉及分步开发长任务，必须更新 `PLANS.md`。
 
 ## Environment
