@@ -44,3 +44,8 @@ src/**/BOUNDARY.md
 
 frontend_example.html
 .DS_Store
+
+AGENTS.md
+PLANS.md
+docs
+docs/*
