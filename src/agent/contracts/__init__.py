@@ -22,7 +22,13 @@ from src.agent.contracts.document import (
     DocumentBlock,
     DocumentIntakeRequest,
     DocumentIntakeResponse,
+    DocumentSensingResult,
+    FileReferenceSnapshot,
+    FormatNormalizationPlan,
+    LayoutSensingMarker,
     ParsedDocument,
+    PdfPhysicalClassification,
+    PromptInjectionGuardResult,
     SourceLocation,
 )
 from src.agent.contracts.rag import KnowledgeHit
@@ -49,8 +55,14 @@ __all__ = [
     "DocumentContentRef",
     "DocumentIntakeRequest",
     "DocumentIntakeResponse",
+    "DocumentSensingResult",
+    "FileReferenceSnapshot",
+    "FormatNormalizationPlan",
     "KnowledgeHit",
+    "LayoutSensingMarker",
     "ParsedDocument",
+    "PdfPhysicalClassification",
+    "PromptInjectionGuardResult",
     "ReviewExecutionOptions",
     "ReviewRequest",
     "ReviewResponse",
@@ -70,6 +82,7 @@ def _main_test_exports() -> None:
     assert "ReviewRequest" in exported_names
     assert "ChatRequest" in exported_names
     assert "DocumentIntakeRequest" in exported_names
+    assert "DocumentSensingResult" in exported_names
     assert "KnowledgeHit" in exported_names
 
 

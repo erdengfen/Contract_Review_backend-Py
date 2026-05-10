@@ -153,11 +153,33 @@ src/agent/contracts/
 
 用于 agent 文件感知能力的完整入参。
 
-- `user_id`：来源于 `current_user.id`，上传接口当前未登录会返回 401。
+- `file_id`：来源于 backend 文件记录，允许为空以兼容接线前的结构测试。
+- `user_id`：来源于 `current_user.id`，用于业务上下文；文件权限控制仍由 backend 负责。
 - `filename`：来源于 `UploadFile.filename`。
 - `file_type`：来源于 `UploadFile.filename` 后缀。
-- `save_path`：来源于旧上传链路保存到本地后的路径。
-- `expected_contract_content_path`：由 backend adapter 按旧逻辑从 `OSS_BUCKET_DIR` 和文件名推导，可选。
+- `save_path`：由 backend 提供的稳定本地路径、共享卷路径或文件服务落地路径。
+- `storage_uri`：由 backend 提供的对象存储或文件服务 URI，可选。
+
+### FileReferenceSnapshot
+
+用于 agent 感知层记录可读取文件引用和文件级指纹，不包含 backend 存储决策字段。
+
+- `file_id`：来源于 backend 文件记录。
+- `original_filename`：来源于上传文件名。
+- `declared_file_type`：来源于 backend 传入的声明文件类型。
+- `detected_file_type`：来源于 agent 基于文件头或容器结构识别出的文件类型。
+- `save_path`：backend 提供的稳定文件路径。
+- `storage_uri`：backend 提供的对象存储或文件服务 URI。
+- `size_bytes`：agent 基于文件引用读取到的文件大小。
+- `sha256`：agent 基于文件引用计算出的文件指纹。
+
+当前接线状态：
+
+- 旧版本文件接收接口仍是 `POST /api/contract/upload`，由 `app/router/contract.py` 接收 `UploadFile`。
+- 新版本 `src/agent/document_intake/` 感知层尚未接入 FastAPI 上传接口。
+- 当前 agent 感知层假设 backend 已经完成文件保存，并通过 `save_path` 传入稳定文件引用。
+- 新 backend 侧真实文件写入、命名冲突处理、共享存储路径生成和 DB 文件记录写入仍待实现。
+- agent 感知层不接收文件流、不写入原始文件、不生成安全文件名、不执行格式转换、不抽取正文。
 
 ### ContractInfoExtraction
 
@@ -177,6 +199,25 @@ src/agent/contracts/
 - `fallback_used`：是否使用降级解析。
 
 backend 仍负责创建合同文件记录，并保持上传接口响应字段为 `file_id`、`title`、`file_path`、`file_type`、`file_url`、`party_a`、`party_b`、`amount`。
+
+## 解析前文件链路
+
+推荐链路是先存储、再解析：
+
+1. backend 接收上传文件流。
+2. backend 完成权限校验、文件名安全化、原始文件写入共享存储或对象存储。
+3. backend 写入或更新文件元数据，形成 `file_id`、`file_path`、`file_type`、`title`、`user_id` 等记录。
+4. backend 调用 agent 文件感知能力，传入 `DocumentIntakeRequest`，其中 `save_path` 指向已经保存的文件。
+5. agent 感知层读取文件头、大小、hash、文件类型线索，输出 `DocumentSensingResult`。
+6. Step 5 解析层根据 `DocumentSensingResult.route` 执行 DOC 归一化、DOCX 解析、PDF 文本解析或 OCR。
+
+不推荐先解析后存储。原因是解析、OCR 和格式转换都需要稳定可追踪的原始文件来源；先存储可以保留证据链、支持失败重试、支持异步处理，也避免上传请求过程中直接执行耗时解析。
+
+如果 backend 与 agent 拆成独立服务，可以共享同一个数据库和同一套文件存储，但需要明确权限边界：
+
+- DB 可以共享，但建议 agent 只读取自身所需的文件记录、模型配置和密钥配置，不反向依赖 backend 的 ORM model、CRUD 或业务服务实例。
+- 文件可以通过共享卷、NFS、对象存储或内部文件服务共享；生产上更推荐对象存储或文件服务，避免把某个容器本地路径当成跨服务稳定路径。
+- 如果实际文件存储逻辑落在 backend，agent 侧可以只保留感知、解析、分块和审阅能力；backend 传给 agent 的应是稳定文件引用，而不是文件流或 backend 本机私有路径。
 
 ## 审阅结构
 

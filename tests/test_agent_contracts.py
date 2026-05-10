@@ -179,11 +179,11 @@ def test_document_intake_contract_matches_upload_flow() -> None:
     """文件感知契约应承接上传保存路径、解析正文和合同信息抽取结果。"""
 
     intake_request = DocumentIntakeRequest(
+        file_id=20,
         user_id=30,
         filename="服务合同.docx",
         file_type="docx",
         save_path="/uploads/30/service.docx",
-        expected_contract_content_path="/oss/service.txt",
     )
     parsed = ParsedDocument(
         filename="服务合同.docx",
