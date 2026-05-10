@@ -13,20 +13,6 @@
 - 看板统计接口，沉淀合同审阅数量、风险修订、合同类型与趋势数据。
 - CAS 与账号密码登录，使用 JWT access token 与 refresh token 管理会话。
 
-## 整体技术路线图
-
-```mermaid
-flowchart TD
-    A["看板层<br/>统计概览、风险点统计、趋势分析、业务使用分析"]
-    B["应用层<br/>文件上传与会话、合同审阅、合同比对、合同聊天"]
-    C["文本处理层<br/>MinerU、Docling、Python-docx、DeepSeek OCR"]
-    D["AI 功能层<br/>RAG、多 Agent 架构、提示词工程、Langfuse 追踪"]
-    E["规则引擎层<br/>中央法规、地方法规、教委文件、学校规则、部门规章"]
-    F["大模型接入层<br/>模型配置、模型路由、审阅模型、问答模型、Embedding 模型"]
-
-    A --> B --> C --> D --> E --> F
-```
-
 ## 技术栈
 
 - 语言与运行时：Python 3.11.x。
