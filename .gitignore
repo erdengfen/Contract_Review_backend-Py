@@ -36,3 +36,11 @@ graph.md
 
 # 架构边界说明文档
 src/**/BOUNDARY.md
+
+.hf-cache/*
+.hf-cache
+.uv-cache
+.uv-cache/*
+
+frontend_example.html
+.DS_Store

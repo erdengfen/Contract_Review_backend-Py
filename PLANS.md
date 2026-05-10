@@ -112,7 +112,10 @@ src/
       format_normalizer.py
       pdf_classifier.py
       layout_mapping.py
-      parsers/
+    parsers/
+      document_parser.py
+      doc_normalizer.py
+      docx_parser.py
     chunking/
       semantic_chunker.py
       chunk_repair.py
@@ -151,7 +154,7 @@ src/
 | --- | --- | --- | --- |
 | 文件存储 | 存储阶段防提示词注入 | `agent/document_intake/storage_guard.py` | 未开始 |
 | 文件存储 | 不同类型 DOC、DOCX 统一输出为 DOCX | `agent/document_intake/format_normalizer.py` | 未开始 |
-| 文档解析 | 当前 DOC、DOCX 解析精度差，需验证 `python-docx` 等方案 | `agent/document_intake/parsers/` | 未开始 |
+| 文档解析 | 当前 DOC、DOCX 解析精度差，需验证 `python-docx` 等方案 | `agent/parsers/` | 进行中 |
 | 文档解析 | 不同 PDF 做物理判断，扫描件和普通 PDF 分流 | `agent/document_intake/pdf_classifier.py` | 未开始 |
 | 文档解析 | 核实 DeepSeek OCR 对复杂表格的识别精度，评估是否需要 AI 补全 | 解析评测记录和 OCR fallback | 未开始 |
 | 文档解析 | 非扫描件使用 MinerU + OCR + 文字处理进行解析 | PDF 解析路由 | 未开始 |
@@ -237,15 +240,17 @@ Step 5 的解析层只负责把 Step 4 的文件感知结果转成 `ParsedDocume
 
 #### Step 5.1：DOC/DOCX 解析链路
 
-- 【】实现 Step 4 到 DOC/DOCX 解析层的接线：`format_normalization_required` 进入 DOC 归一化，`parse_docx_pending` 进入 DOCX 解析。
-- 【】实现 DOC 到 DOCX 的解析前归一化能力，归一化属于解析层，不回放到 Step 4 感知层。
-- 【】设计 DOCX 解析器输出结构，按文档原始顺序产出段落、标题、列表、表格和图片占位。
-- 【】表格需要输出 Markdown 视图和结构化单元格视图，记录行列、合并单元格线索和所在版面序号。
-- 【】图片先输出不可执行的占位文本和图片关系元数据，不在本阶段做 OCR 或图片内容理解。
-- 【】页标定位不能伪造；DOCX 原生无法稳定提供物理页码时，只记录显式分页符推导页码或将 `page_number` 留空，并在 metadata 标记页码来源。
-- 【】解析结果同时产出结构化 JSON 视图和面向 Step 6 切片的 Markdown/纯文本视图。
-- 【】设计空文本、低置信度、格式转换失败、解析异常时的失败回退策略。
-- 【】补充 DOC/DOCX 解析结构测试，验证段落和表格顺序、图片占位、页标来源、失败回退和 Step 4 接线。
+- √ 按目录边界建立 `src/agent/parsers/`，与 `src/agent/document_intake/` 同级，解析层不回放到感知层。
+- √ 实现 Step 4 到 DOC/DOCX 解析层的接线：`format_normalization_required` 进入 DOC 归一化，`parse_docx_pending` 进入 DOCX 解析。
+- √ 建立 DOC 到 DOCX 的解析前归一化入口，归一化属于解析层，不回放到 Step 4 感知层；实际转换依赖运行环境 LibreOffice，不依赖旧 `app/` 工具函数。
+- √ 设计 DOCX 解析器输出结构，按文档原始顺序产出段落、标题、列表、表格和图片占位。
+- √ 表格输出 Markdown 视图和结构化单元格视图，记录行列、合并单元格线索和所在版面序号。
+- √ 图片先输出不可执行的占位文本和图片关系元数据，不在本阶段做 OCR 或图片内容理解。
+- √ 页标定位不伪造；DOCX 原生无法稳定提供物理页码时，只记录显式分页符推导页码或将 `page_number` 留空，并在 metadata 标记页码来源。
+- √ 解析结果同时产出结构化 JSON 视图和面向 Step 6 切片的 Markdown/纯文本视图。
+- √ 设计空文本、格式转换失败、感知阻断和不支持路由时的失败回退结构。
+- √ 补充 DOC/DOCX 解析结构测试，验证段落和表格顺序、页标来源、失败回退和 Step 4 接线。
+- 【】使用真实复杂合同样本验证 DOCX 表格、页标和图片占位解析精度。
 
 #### Step 5.2：PDF 解析链路
 

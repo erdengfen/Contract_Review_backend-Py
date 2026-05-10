@@ -63,6 +63,7 @@ class ParsedDocument(AgentContractModel):
     parser_name: str | None = Field(None, description="实际使用的解析器名称。")
     parse_status: Literal["success", "partial", "failed"] = Field("success", description="解析状态。")
     warnings: list[str] = Field(default_factory=list, description="非敏感解析告警。")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="解析层非敏感结构化元数据。")
 
 
 class DocumentIntakeRequest(AgentContractModel):

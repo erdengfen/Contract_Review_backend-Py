@@ -146,6 +146,7 @@ src/agent/contracts/
 - `parser_name`：实际使用的解析器名称。
 - `parse_status`：解析状态，如 `success`、`partial`、`failed`。
 - `warnings`：非敏感解析告警。
+- `metadata`：解析层非敏感结构化元数据，如 `content_format`、`block_count`、`page_number_source`、`source_route`。
 
 ## 文件感知结构
 
