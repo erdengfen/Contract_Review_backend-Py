@@ -2,6 +2,7 @@
 
 本测试验证 Step 5.1 DOCX 结构解析器和 Step 4 感知结果到解析层的接线。
 """
+import json
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,12 @@ from docx import Document
 from src.agent.contracts import DocumentIntakeRequest
 from src.agent.document_intake import sense_document
 from src.agent.parsers import parse_document_from_sensing, parse_docx_file
+
+
+# 真实 DOCX 验证入口：把文件放到这里，或直接修改这个常量指向你的样本。
+TEST_DATA_DIR = Path(__file__).resolve().parent / "data"
+REAL_DOCX_PATH = TEST_DATA_DIR / "real_contract.docx"
+PARSED_OUTPUT_DIR = TEST_DATA_DIR / "parsed_outputs"
 
 
 def _write_structured_docx(path: Path) -> None:
@@ -46,6 +53,20 @@ def _build_request(path: Path, filename: str, file_type: str) -> DocumentIntakeR
         file_type=file_type,
         save_path=str(path),
     )
+
+
+def _dump_parsed_document_for_review(parsed, source_path: Path) -> tuple[Path, Path]:
+    """把真实样本解析结果临时落盘，便于人工审查 Markdown 和结构化 JSON。"""
+
+    PARSED_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    md_path = PARSED_OUTPUT_DIR / f"{source_path.stem}.parsed.md"
+    json_path = PARSED_OUTPUT_DIR / f"{source_path.stem}.parsed.json"
+    md_path.write_text(parsed.contract_content or "", encoding="utf-8")
+    json_path.write_text(
+        json.dumps(parsed.model_dump(mode="json"), ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return md_path, json_path
 
 
 def test_docx_parser_preserves_paragraph_table_order(tmp_path: Path) -> None:
@@ -114,6 +135,23 @@ def test_doc_route_is_wired_to_normalization_failure_without_app_dependency(tmp_
     assert parsed.parse_status == "failed"
     assert "doc_normalization_failed" in parsed.warnings
     assert parsed.metadata["source_route"] == "format_normalization_required"
+
+
+def test_real_docx_file_can_be_parsed_and_dumped_for_review() -> None:
+    """解析 tests/data 下的真实 DOCX，并把审查产物写到 tests/data/parsed_outputs。"""
+
+    if not REAL_DOCX_PATH.exists():
+        pytest.skip(f"请将真实 DOCX 文件放到: {REAL_DOCX_PATH}")
+
+    sensing = sense_document(_build_request(REAL_DOCX_PATH, REAL_DOCX_PATH.name, "docx"))
+    parsed = parse_document_from_sensing(sensing)
+    md_path, json_path = _dump_parsed_document_for_review(parsed, REAL_DOCX_PATH)
+
+    assert sensing.route == "parse_docx_pending"
+    assert parsed.parse_status == "success"
+    assert parsed.blocks
+    assert md_path.exists()
+    assert json_path.exists()
 
 
 if __name__ == "__main__":

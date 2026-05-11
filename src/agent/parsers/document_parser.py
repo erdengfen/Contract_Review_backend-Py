@@ -10,9 +10,14 @@ from pathlib import Path
 from src.agent.contracts.document import DocumentSensingResult, ParsedDocument
 from src.agent.parsers.doc_normalizer import DocNormalizationError, normalize_doc_to_docx
 from src.agent.parsers.docx_parser import parse_docx_file
+from src.agent.parsers.pdf_parser import MinerULightParser, parse_text_pdf_file
 
 
-def parse_document_from_sensing(sensing: DocumentSensingResult) -> ParsedDocument:
+def parse_document_from_sensing(
+    sensing: DocumentSensingResult,
+    *,
+    mineru_client: MinerULightParser | None = None,
+) -> ParsedDocument:
     """根据文档感知结果调用对应解析器。"""
 
     if sensing.trust.blocked or sensing.route == "blocked":
@@ -21,6 +26,8 @@ def parse_document_from_sensing(sensing: DocumentSensingResult) -> ParsedDocumen
         return _parse_docx_from_sensing(sensing)
     if sensing.route == "format_normalization_required":
         return _parse_doc_after_normalization(sensing)
+    if sensing.route == "pdf_text_extract":
+        return _parse_text_pdf_from_sensing(sensing, mineru_client)
     return _failed_from_sensing(sensing, [f"parser_route_not_supported:{sensing.route}"])
 
 
@@ -57,6 +64,24 @@ def _parse_doc_after_normalization(sensing: DocumentSensingResult) -> ParsedDocu
     parsed.warnings = [*sensing.warnings, "doc_normalized_to_docx_ephemeral", *parsed.warnings]
     parsed.metadata["source_route"] = sensing.route
     parsed.metadata["normalization"] = "doc_to_docx"
+    return parsed
+
+
+def _parse_text_pdf_from_sensing(
+    sensing: DocumentSensingResult,
+    mineru_client: MinerULightParser | None,
+) -> ParsedDocument:
+    """解析普通 PDF，保留 MinerU 轻量解析可选接入。"""
+
+    parsed = parse_text_pdf_file(
+        sensing.file_reference.save_path,
+        filename=sensing.file_reference.original_filename,
+        file_id=sensing.file_reference.file_id,
+        original_file_path=sensing.file_reference.save_path,
+        mineru_client=mineru_client,
+    )
+    parsed.warnings = [*sensing.warnings, *parsed.warnings]
+    parsed.metadata["source_route"] = sensing.route
     return parsed
 
 
